@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260702-5" />
+    <link rel="stylesheet" href="styles.css?v=20260702-6" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -50,6 +50,7 @@
         <nav class="app-nav" aria-label="Main views">
           <button id="homeNavItem" class="nav-item active" data-view="rankingsView" type="button">Home</button>
           <button id="rankingNavItem" class="nav-item" data-view="myRankingView" type="button">My list</button>
+          <button id="featuresNavItem" class="nav-item" data-view="featuresView" type="button">Features</button>
           <button id="groupNavItem" class="nav-item" data-view="groupView" type="button">Group</button>
         </nav>
 
@@ -73,6 +74,67 @@
             <button id="saveRankingButton" class="primary-button compact" type="button">Save</button>
           </div>
           <div id="personalRankingList" class="rank-list empty-state">No group members yet.</div>
+        </section>
+
+        <section id="featuresView" class="view">
+          <div id="featuresHub" class="feature-screen">
+            <div class="section-heading">
+              <div>
+                <h2>Features</h2>
+                <p class="muted">A little corner for everything your group keeps together.</p>
+              </div>
+            </div>
+            <div class="feature-grid">
+              <button class="feature-tile quote-tile" type="button" data-feature="quotes">
+                <span class="feature-icon" aria-hidden="true">&ldquo;</span>
+                <strong>Quote Book</strong>
+                <span>Save the things worth remembering.</span>
+              </button>
+              <button class="feature-tile" type="button" data-feature="hangouts">
+                <span class="feature-icon" aria-hidden="true">&#128197;</span>
+                <strong>Hangout Plans</strong>
+                <span>Coming soon</span>
+              </button>
+              <button class="feature-tile" type="button" data-feature="ideas">
+                <span class="feature-icon" aria-hidden="true">&#9733;</span>
+                <strong id="ideasFeatureTitle">Group Ideas</strong>
+                <span>Coming soon</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="quoteBook" class="feature-screen hidden">
+            <div class="section-heading">
+              <div class="heading-with-back">
+                <button id="quoteBackButton" class="back-button" type="button" aria-label="Back to features">&#8592;</button>
+                <div>
+                  <h2>Quote Book</h2>
+                  <p class="muted">Tap a quote to see its story.</p>
+                </div>
+              </div>
+            </div>
+            <div id="quoteList" class="quote-list"></div>
+            <button id="addQuoteButton" class="floating-add-button" type="button" aria-label="Add a quote" title="Add quote">+</button>
+          </div>
+
+          <div id="quoteComposer" class="quote-composer hidden" role="dialog" aria-modal="true" aria-labelledby="quoteComposerTitle">
+            <form id="quoteForm" class="quote-form">
+              <div class="composer-heading">
+                <h2 id="quoteComposerTitle">Add a quote</h2>
+                <button id="closeQuoteButton" class="icon-button" type="button" aria-label="Close quote form">X</button>
+              </div>
+              <label>Quote
+                <textarea id="quoteInput" rows="4" maxlength="1000" placeholder="What was said?" required></textarea>
+              </label>
+              <label>Date
+                <input id="quoteDateInput" type="date" required />
+              </label>
+              <label>More context
+                <textarea id="quoteContextInput" rows="4" maxlength="3000" placeholder="Where were you? What happened?"></textarea>
+              </label>
+              <button id="saveQuoteButton" class="primary-button" type="submit">Save quote</button>
+            </form>
+          </div>
         </section>
 
         <section id="groupView" class="view">
@@ -151,6 +213,6 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260702-5"></script>
+    <script src="app.js?v=20260702-6"></script>
   </body>
 </html>
