@@ -12,6 +12,7 @@ const state = {
   group: null,
   members: [],
   personalOrder: [],
+  quotes: [],
   avatarFile: null,
   avatarPreviewUrl: null
 };
@@ -36,12 +37,26 @@ const el = {
   refreshButton: document.querySelector("#refreshButton"),
   homeNavItem: document.querySelector("#homeNavItem"),
   rankingNavItem: document.querySelector("#rankingNavItem"),
+  featuresNavItem: document.querySelector("#featuresNavItem"),
   groupNavItem: document.querySelector("#groupNavItem"),
   groupTitle: document.querySelector("#groupTitle"),
   rankingSubtext: document.querySelector("#rankingSubtext"),
   overallList: document.querySelector("#overallList"),
   personalRankingList: document.querySelector("#personalRankingList"),
   saveRankingButton: document.querySelector("#saveRankingButton"),
+  featuresHub: document.querySelector("#featuresHub"),
+  quoteBook: document.querySelector("#quoteBook"),
+  quoteList: document.querySelector("#quoteList"),
+  quoteBackButton: document.querySelector("#quoteBackButton"),
+  addQuoteButton: document.querySelector("#addQuoteButton"),
+  quoteComposer: document.querySelector("#quoteComposer"),
+  quoteForm: document.querySelector("#quoteForm"),
+  quoteInput: document.querySelector("#quoteInput"),
+  quoteDateInput: document.querySelector("#quoteDateInput"),
+  quoteContextInput: document.querySelector("#quoteContextInput"),
+  closeQuoteButton: document.querySelector("#closeQuoteButton"),
+  saveQuoteButton: document.querySelector("#saveQuoteButton"),
+  ideasFeatureTitle: document.querySelector("#ideasFeatureTitle"),
   createGroupForm: document.querySelector("#createGroupForm"),
   groupNameInput: document.querySelector("#groupNameInput"),
   joinGroupForm: document.querySelector("#joinGroupForm"),
@@ -227,6 +242,7 @@ function render() {
   el.groupTitle.textContent = state.group?.name || "Rank Circle";
   el.currentInviteCode.textContent = state.group?.invite_code || "None yet";
   el.groupSettings.classList.toggle("hidden", !state.group);
+  el.ideasFeatureTitle.textContent = `${state.group?.name || "Group"} Ideas`;
   updateNavigation();
   el.settingsButton.innerHTML = avatarMarkup(state.profile || {}, "header-avatar");
   el.nicknameInput.value = state.profile?.nickname || "";
@@ -241,6 +257,7 @@ function updateNavigation() {
   const hasGroup = Boolean(state.group);
   el.homeNavItem.classList.toggle("hidden", !hasGroup);
   el.rankingNavItem.classList.toggle("hidden", !hasGroup);
+  el.featuresNavItem.classList.toggle("hidden", !hasGroup);
   el.groupNavItem.classList.toggle("hidden", hasGroup);
 
   const activeView = document.querySelector(".view.active")?.id;
@@ -479,6 +496,112 @@ async function joinGroup(event) {
   await loadAppData();
 }
 
+function localDateValue(date = new Date()) {
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 10);
+}
+
+function formatQuoteDate(value) {
+  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "long", day: "numeric" })
+    .format(new Date(`${value}T12:00:00`));
+}
+
+function renderQuotes() {
+  if (!state.quotes.length) {
+    el.quoteList.innerHTML = '<div class="empty-state">No quotes yet. Add the first one.</div>';
+    return;
+  }
+
+  el.quoteList.innerHTML = state.quotes.map((item) => `
+    <details class="quote-entry">
+      <summary>
+        <span class="quote-mark" aria-hidden="true">&ldquo;</span>
+        <span>${escapeHtml(item.quote)}</span>
+        <span class="quote-chevron" aria-hidden="true">&#8964;</span>
+      </summary>
+      <div class="quote-details">
+        <div><strong>Date</strong><span>${escapeHtml(formatQuoteDate(item.quote_date))}</span></div>
+        <div><strong>Added by</strong><span>${escapeHtml(item.profiles?.nickname || "Group member")}</span></div>
+        ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
+      </div>
+    </details>
+  `).join("");
+}
+
+async function loadQuotes() {
+  const { data, error } = await state.client
+    .from("quotes")
+    .select("id, quote, quote_date, context, created_at, profiles(nickname)")
+    .eq("group_id", state.group.id)
+    .order("quote_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  state.quotes = data || [];
+  renderQuotes();
+}
+
+async function openFeature(feature) {
+  if (feature !== "quotes") {
+    showToast("That feature is coming next");
+    return;
+  }
+
+  el.featuresHub.classList.add("hidden");
+  el.quoteBook.classList.remove("hidden");
+  await loadQuotes();
+}
+
+function showFeaturesHub() {
+  el.quoteBook.classList.add("hidden");
+  el.featuresHub.classList.remove("hidden");
+}
+
+function openQuoteComposer() {
+  el.quoteForm.reset();
+  el.quoteDateInput.value = localDateValue();
+  el.quoteComposer.classList.remove("hidden");
+  el.quoteInput.focus();
+}
+
+function closeQuoteComposer() {
+  el.quoteComposer.classList.add("hidden");
+}
+
+async function saveQuote(event) {
+  event.preventDefault();
+  const quote = el.quoteInput.value.trim();
+  const context = el.quoteContextInput.value.trim() || null;
+  if (!quote || !state.group) return;
+
+  el.saveQuoteButton.disabled = true;
+  el.saveQuoteButton.textContent = "Saving...";
+
+  const { error } = await state.client.from("quotes").insert({
+    group_id: state.group.id,
+    author_id: state.session.user.id,
+    quote,
+    quote_date: el.quoteDateInput.value,
+    context
+  });
+
+  el.saveQuoteButton.disabled = false;
+  el.saveQuoteButton.textContent = "Save quote";
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  closeQuoteComposer();
+  showToast("Quote added");
+  await loadQuotes();
+}
+
 async function copyInviteCode() {
   if (!state.group) return;
   try {
@@ -592,10 +715,20 @@ function wireEvents() {
   el.createGroupForm.addEventListener("submit", createGroup);
   el.joinGroupForm.addEventListener("submit", joinGroup);
   el.saveRankingButton.addEventListener("click", saveRanking);
+  el.quoteBackButton.addEventListener("click", showFeaturesHub);
+  el.addQuoteButton.addEventListener("click", openQuoteComposer);
+  el.closeQuoteButton.addEventListener("click", closeQuoteComposer);
+  el.quoteForm.addEventListener("submit", saveQuote);
+  document.querySelectorAll("[data-feature]").forEach((button) => {
+    button.addEventListener("click", () => openFeature(button.dataset.feature));
+  });
   el.nicknameInput.addEventListener("input", renderAvatarPreview);
   el.avatarFileInput.addEventListener("change", selectAvatarFile);
 
-  document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
+  document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => {
+    switchView(button.dataset.view);
+    if (button.dataset.view === "featuresView") showFeaturesHub();
+  }));
 
   el.personalRankingList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-move]");
