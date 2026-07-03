@@ -368,13 +368,13 @@ input:focus, textarea:focus {
   font-size: 1.2rem;
 }
 .quote-list { display: grid; gap: 10px; padding-bottom: 76px; }
-.quote-entry {
+.quote-entry, .idea-entry {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--card-bg);
   overflow: hidden;
 }
-.quote-entry summary {
+.quote-entry summary, .idea-entry summary {
   min-height: 72px;
   padding: 14px;
   cursor: pointer;
@@ -386,10 +386,10 @@ input:focus, textarea:focus {
   font-weight: 800;
   line-height: 1.4;
 }
-.quote-entry summary::-webkit-details-marker { display: none; }
+.quote-entry summary::-webkit-details-marker, .idea-entry summary::-webkit-details-marker { display: none; }
 .quote-mark { color: var(--accent); font-size: 1.8rem; line-height: 1; }
 .quote-chevron { color: var(--muted); transition: transform 160ms ease; }
-.quote-entry[open] .quote-chevron { transform: rotate(180deg); }
+.quote-entry[open] .quote-chevron, .idea-entry details[open] .quote-chevron { transform: rotate(180deg); }
 .quote-details {
   padding: 0 14px 14px 48px;
   border-top: 1px solid var(--line);
@@ -399,6 +399,30 @@ input:focus, textarea:focus {
 .quote-details > div { padding-top: 12px; display: grid; gap: 3px; }
 .quote-details strong { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
 .quote-context p { margin: 0; line-height: 1.5; white-space: pre-wrap; }
+.idea-entry { overflow: hidden; }
+.idea-entry details { border-bottom: 1px solid var(--line); }
+.idea-bulb { margin: 0; font-size: 1.25rem; }
+.vote-row {
+  min-height: 48px;
+  padding: 7px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.vote-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--control-bg);
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+.vote-button.active { border-color: var(--primary); background: var(--soft); color: var(--primary-dark); }
+.vote-score { min-width: 28px; text-align: center; }
 .floating-add-button {
   position: fixed;
   right: max(24px, calc((100vw - 1060px) / 2 + 36px));
