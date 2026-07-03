@@ -534,7 +534,7 @@ function renderQuotes() {
       </summary>
       <div class="quote-details">
         <div><strong>Date</strong><span>${escapeHtml(formatQuoteDate(item.quote_date))}</span></div>
-        <div><strong>Added by</strong><span>${escapeHtml(item.author?.nickname || "Group member")}</span></div>
+        <div><strong>Added by</strong><span>${escapeHtml(item.profiles?.nickname || "Group member")}</span></div>
         ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
       </div>
     </details>
@@ -640,7 +640,7 @@ function renderIdeas() {
             <span class="quote-chevron" aria-hidden="true">&#8964;</span>
           </summary>
           <div class="quote-details">
-            <div><strong>Added by</strong><span>${escapeHtml(item.profiles?.nickname || "Group member")}</span></div>
+            <div><strong>Added by</strong><span>${escapeHtml(item.author?.nickname || "Group member")}</span></div>
             ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
           </div>
         </details>
