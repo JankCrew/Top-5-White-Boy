@@ -49,7 +49,7 @@ group by r.group_id, p.id, p.nickname, p.avatar_url;
 
 grant select, insert, update on public.profiles to authenticated;
 grant select, insert on public.groups to authenticated;
-grant select, insert on public.group_members to authenticated;
+grant select, insert, delete on public.group_members to authenticated;
 grant select, insert, update on public.rankings to authenticated;
 grant select on public.group_rankings to authenticated;
 
@@ -100,6 +100,12 @@ create policy "users can join groups as themselves"
 on public.group_members for insert
 to authenticated
 with check (user_id = auth.uid());
+
+drop policy if exists "users can leave groups themselves" on public.group_members;
+create policy "users can leave groups themselves"
+on public.group_members for delete
+to authenticated
+using (user_id = (select auth.uid()));
 
 drop policy if exists "members can read rankings in their groups" on public.rankings;
 create policy "members can read rankings in their groups"
