@@ -1,4 +1,7 @@
 const CONFIG_KEY = "rank-circle-supabase-config";
+const THEME_KEY = "rank-circle-theme";
+const AVATAR_BUCKET = "avatars";
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 const state = {
   client: null,
@@ -8,7 +11,9 @@ const state = {
   membership: null,
   group: null,
   members: [],
-  personalOrder: []
+  personalOrder: [],
+  avatarFile: null,
+  avatarPreviewUrl: null
 };
 
 const el = {
@@ -25,6 +30,7 @@ const el = {
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
   signOutButton: document.querySelector("#signOutButton"),
+  themeToggle: document.querySelector("#themeToggle"),
   refreshButton: document.querySelector("#refreshButton"),
   groupTitle: document.querySelector("#groupTitle"),
   rankingSubtext: document.querySelector("#rankingSubtext"),
@@ -39,7 +45,8 @@ const el = {
   memberList: document.querySelector("#memberList"),
   profileForm: document.querySelector("#profileForm"),
   nicknameInput: document.querySelector("#nicknameInput"),
-  avatarUrlInput: document.querySelector("#avatarUrlInput"),
+  avatarFileInput: document.querySelector("#avatarFileInput"),
+  saveProfileButton: document.querySelector("#saveProfileButton"),
   avatarPreview: document.querySelector("#avatarPreview"),
   toast: document.querySelector("#toast")
 };
@@ -58,6 +65,12 @@ function saveConfig(config) {
 
 function connectSupabase(config) {
   state.client = window.supabase.createClient(config.url, config.anonKey);
+}
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem(THEME_KEY, theme);
+  el.themeToggle.checked = theme === "dark";
 }
 
 function showToast(message) {
@@ -110,6 +123,7 @@ async function bootstrap() {
   el.supabaseUrl.value = config.url;
   el.supabaseAnonKey.value = config.anonKey;
   connectSupabase(config);
+  el.themeToggle.checked = document.documentElement.dataset.theme === "dark";
 
   const { data } = await state.client.auth.getSession();
   state.session = data.session;
@@ -205,18 +219,61 @@ function render() {
   el.groupTitle.textContent = state.group?.name || "Rank Circle";
   el.currentInviteCode.textContent = state.group?.invite_code || "None yet";
   el.nicknameInput.value = state.profile?.nickname || "";
-  el.avatarUrlInput.value = state.profile?.avatar_url || "";
+  el.avatarFileInput.value = "";
+  state.avatarFile = null;
   renderAvatarPreview();
   renderMembers();
   renderPersonalRanking();
 }
 
 function renderAvatarPreview() {
-  if (el.avatarUrlInput.value) {
-    el.avatarPreview.innerHTML = `<img src="${escapeHtml(el.avatarUrlInput.value)}" alt="Profile preview" />`;
+  const previewUrl = state.avatarPreviewUrl || state.profile?.avatar_url;
+  if (previewUrl) {
+    el.avatarPreview.innerHTML = `<img src="${escapeHtml(previewUrl)}" alt="Profile preview" />`;
     return;
   }
   el.avatarPreview.textContent = initials(el.nicknameInput.value || state.profile?.nickname);
+}
+
+function selectAvatarFile() {
+  const file = el.avatarFileInput.files[0] || null;
+  if (!file) {
+    state.avatarFile = null;
+    if (state.avatarPreviewUrl) URL.revokeObjectURL(state.avatarPreviewUrl);
+    state.avatarPreviewUrl = null;
+    renderAvatarPreview();
+    return;
+  }
+
+  if (!["image/png", "image/jpeg"].includes(file.type)) {
+    el.avatarFileInput.value = "";
+    showToast("Choose a PNG or JPEG image");
+    return;
+  }
+
+  if (file.size > MAX_AVATAR_SIZE) {
+    el.avatarFileInput.value = "";
+    showToast("Profile pictures must be 5 MB or smaller");
+    return;
+  }
+
+  if (state.avatarPreviewUrl) URL.revokeObjectURL(state.avatarPreviewUrl);
+  state.avatarFile = file;
+  state.avatarPreviewUrl = URL.createObjectURL(file);
+  renderAvatarPreview();
+}
+
+async function uploadAvatar(file) {
+  const extension = file.type === "image/png" ? "png" : "jpg";
+  const path = `${state.session.user.id}/avatar.${extension}`;
+  const { error } = await state.client.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: true });
+
+  if (error) throw error;
+
+  const { data } = state.client.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+  return `${data.publicUrl}?v=${Date.now()}`;
 }
 
 function renderMembers() {
@@ -308,20 +365,31 @@ async function renderOverallRanking() {
 async function saveProfile(event) {
   event.preventDefault();
   const nickname = el.nicknameInput.value.trim();
-  const avatarUrl = el.avatarUrlInput.value.trim() || null;
+  el.saveProfileButton.disabled = true;
+  el.saveProfileButton.textContent = state.avatarFile ? "Uploading..." : "Saving...";
 
-  const { error } = await state.client
-    .from("profiles")
-    .update({ nickname, avatar_url: avatarUrl })
-    .eq("id", state.session.user.id);
+  try {
+    const avatarUrl = state.avatarFile
+      ? await uploadAvatar(state.avatarFile)
+      : state.profile?.avatar_url || null;
 
-  if (error) {
-    showToast(error.message);
-    return;
+    const { error } = await state.client
+      .from("profiles")
+      .update({ nickname, avatar_url: avatarUrl })
+      .eq("id", state.session.user.id);
+
+    if (error) throw error;
+
+    if (state.avatarPreviewUrl) URL.revokeObjectURL(state.avatarPreviewUrl);
+    state.avatarPreviewUrl = null;
+    showToast("Profile saved");
+    await loadAppData();
+  } catch (error) {
+    showToast(error.message || "Could not save profile");
+  } finally {
+    el.saveProfileButton.disabled = false;
+    el.saveProfileButton.textContent = "Save profile";
   }
-
-  showToast("Profile saved");
-  await loadAppData();
 }
 
 function randomInviteCode() {
@@ -460,13 +528,14 @@ function wireEvents() {
   });
 
   el.signOutButton.addEventListener("click", () => state.client.auth.signOut());
+  el.themeToggle.addEventListener("change", () => setTheme(el.themeToggle.checked ? "dark" : "light"));
   el.refreshButton.addEventListener("click", loadAppData);
   el.profileForm.addEventListener("submit", saveProfile);
   el.createGroupForm.addEventListener("submit", createGroup);
   el.joinGroupForm.addEventListener("submit", joinGroup);
   el.saveRankingButton.addEventListener("click", saveRanking);
   el.nicknameInput.addEventListener("input", renderAvatarPreview);
-  el.avatarUrlInput.addEventListener("input", renderAvatarPreview);
+  el.avatarFileInput.addEventListener("change", selectAvatarFile);
 
   document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
 
