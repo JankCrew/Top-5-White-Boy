@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260702-7" />
+    <link rel="stylesheet" href="styles.css?v=20260702-8" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -117,6 +117,36 @@
             <button id="addQuoteButton" class="floating-add-button" type="button" aria-label="Add a quote" title="Add quote">+</button>
           </div>
 
+          <div id="ideaBook" class="feature-screen hidden">
+            <div class="section-heading">
+              <div class="heading-with-back">
+                <button id="ideaBackButton" class="back-button" type="button" aria-label="Back to features">&#8592;</button>
+                <div>
+                  <h2 id="ideaBookTitle">Group Ideas</h2>
+                  <p class="muted">Vote on what your group should do next.</p>
+                </div>
+              </div>
+            </div>
+            <div id="ideaList" class="quote-list"></div>
+            <button id="addIdeaButton" class="floating-add-button" type="button" aria-label="Add an idea" title="Add idea">+</button>
+          </div>
+
+          <div id="ideaComposer" class="quote-composer hidden" role="dialog" aria-modal="true" aria-labelledby="ideaComposerTitle">
+            <form id="ideaForm" class="quote-form">
+              <div class="composer-heading">
+                <h2 id="ideaComposerTitle">Add an idea</h2>
+                <button id="closeIdeaButton" class="icon-button" type="button" aria-label="Close idea form">X</button>
+              </div>
+              <label>Idea
+                <textarea id="ideaInput" rows="4" maxlength="1000" placeholder="What should the group do?" required></textarea>
+              </label>
+              <label>More context
+                <textarea id="ideaContextInput" rows="4" maxlength="3000" placeholder="Add any useful details"></textarea>
+              </label>
+              <button id="saveIdeaButton" class="primary-button" type="submit">Save idea</button>
+            </form>
+          </div>
+
           <div id="quoteComposer" class="quote-composer hidden" role="dialog" aria-modal="true" aria-labelledby="quoteComposerTitle">
             <form id="quoteForm" class="quote-form">
               <div class="composer-heading">
@@ -213,6 +243,6 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260702-7"></script>
+    <script src="app.js?v=20260702-8"></script>
   </body>
 </html>
