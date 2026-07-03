@@ -167,3 +167,42 @@ drop policy if exists "users can delete their own avatar" on storage.objects;
 create policy "users can delete their own avatar"
 on storage.objects for delete to authenticated
 using (bucket_id = 'avatars' and (select auth.uid())::text = (storage.foldername(name))[1]);
+
+
+-- Group quote book
+create table if not exists public.quotes (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  quote text not null check (char_length(trim(quote)) between 1 and 1000),
+  quote_date date not null default current_date,
+  context text check (context is null or char_length(context) <= 3000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists quotes_group_id_quote_date_idx
+on public.quotes (group_id, quote_date desc, created_at desc);
+
+grant select, insert on public.quotes to authenticated;
+alter table public.quotes enable row level security;
+
+drop policy if exists "group members can read quotes" on public.quotes;
+create policy "group members can read quotes"
+on public.quotes for select to authenticated
+using (
+  exists (
+    select 1 from public.group_members gm
+    where gm.group_id = quotes.group_id and gm.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "group members can add quotes" on public.quotes;
+create policy "group members can add quotes"
+on public.quotes for insert to authenticated
+with check (
+  author_id = (select auth.uid())
+  and exists (
+    select 1 from public.group_members gm
+    where gm.group_id = quotes.group_id and gm.user_id = (select auth.uid())
+  )
+);
