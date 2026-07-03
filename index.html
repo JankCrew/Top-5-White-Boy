@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260702-3" />
+    <link rel="stylesheet" href="styles.css?v=20260702-4" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -48,9 +48,9 @@
         </header>
 
         <nav class="app-nav" aria-label="Main views">
-          <button class="nav-item active" data-view="rankingsView" type="button">Ranks</button>
-          <button class="nav-item" data-view="myRankingView" type="button">My list</button>
-          <button class="nav-item" data-view="groupView" type="button">Group</button>
+          <button id="homeNavItem" class="nav-item active" data-view="rankingsView" type="button">Home</button>
+          <button id="rankingNavItem" class="nav-item" data-view="myRankingView" type="button">My list</button>
+          <button id="groupNavItem" class="nav-item" data-view="groupView" type="button">Group</button>
         </nav>
 
         <section id="rankingsView" class="view active">
@@ -90,8 +90,6 @@
             <label>Invite code<input id="inviteCodeInput" type="text" maxlength="12" placeholder="AB12CD" /></label>
             <button class="secondary-button" type="submit">Join</button>
           </form>
-          <div class="group-code"><span>Current invite code</span><strong id="currentInviteCode">None yet</strong></div>
-          <div id="memberList" class="member-grid"></div>
         </section>
 
         <section id="profileView" class="view">
@@ -110,6 +108,26 @@
             </label>
             <button id="saveProfileButton" class="primary-button" type="submit">Save profile</button>
           </form>
+          <div id="groupSettings" class="settings-group hidden">
+            <div class="settings-section">
+              <div>
+                <strong>Your group</strong>
+                <p class="muted">Share this code to invite friends.</p>
+              </div>
+              <div class="invite-actions">
+                <strong id="currentInviteCode" class="settings-invite-code">None yet</strong>
+                <button id="copyInviteButton" class="secondary-button compact-button" type="button">Copy</button>
+              </div>
+            </div>
+            <div id="memberList" class="member-grid settings-members"></div>
+            <div class="settings-section">
+              <div>
+                <strong>Leave group</strong>
+                <p class="muted">Your saved rankings will remain if you rejoin later.</p>
+              </div>
+              <button id="leaveGroupButton" class="danger-button" type="button">Leave</button>
+            </div>
+          </div>
           <div class="settings-section">
             <div>
               <strong>Dark mode</strong>
@@ -133,6 +151,6 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260702-3"></script>
+    <script src="app.js?v=20260702-4"></script>
   </body>
 </html>
