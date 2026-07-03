@@ -431,6 +431,35 @@ input:focus, textarea:focus {
   gap: 8px;
 }
 .saved-address-list { display: grid; gap: 8px; margin-top: 12px; }
+.address-autocomplete { position: relative; }
+.address-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 5px);
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  z-index: 30;
+}
+.address-suggestion {
+  width: 100%;
+  min-height: 54px;
+  padding: 9px 11px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+.address-suggestion:last-child { border-bottom: 0; }
+.address-suggestion:hover, .address-suggestion:focus { background: var(--soft); }
+.address-suggestion span { color: var(--muted); font-size: 0.78rem; }
 .saved-address-empty { margin: 12px 0 0; }
 .saved-address-item {
   min-width: 0;
@@ -453,6 +482,8 @@ input:focus, textarea:focus {
 }
 .saved-place-button strong, .saved-place-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .saved-place-button span { color: var(--muted); font-size: 0.78rem; }
+.saved-address-actions { display: flex; align-items: stretch; gap: 6px; }
+.saved-address-actions .map-link { min-height: 100%; }
 .delete-place-button {
   width: 42px;
   border: 1px solid var(--line);
