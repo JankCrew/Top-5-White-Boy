@@ -54,7 +54,7 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-button, input { font: inherit; }
+button, input, textarea { font: inherit; }
 button { cursor: pointer; }
 
 .shell {
@@ -119,7 +119,7 @@ label {
   font-weight: 700;
 }
 
-input {
+input, textarea {
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--line);
@@ -130,7 +130,9 @@ input {
   outline: none;
 }
 
-input:focus {
+textarea { min-height: 96px; padding: 12px; resize: vertical; }
+
+input:focus, textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
@@ -330,6 +332,110 @@ input:focus {
 .settings-invite-code { font-size: 1.05rem; }
 .compact-button { min-height: 38px; padding: 0 12px; }
 .settings-members { margin: 4px 0 22px; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.feature-tile {
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  text-align: left;
+}
+.feature-tile:hover { border-color: var(--primary); }
+.feature-tile strong { font-size: 1rem; }
+.feature-tile > span:last-child { color: var(--muted); font-size: 0.78rem; line-height: 1.3; }
+.feature-icon { margin-bottom: auto; color: var(--accent); font-size: 2rem; font-weight: 900; }
+.heading-with-back { display: flex; align-items: center; gap: 12px; }
+.back-button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--control-bg);
+  color: var(--ink);
+  font-size: 1.2rem;
+}
+.quote-list { display: grid; gap: 10px; padding-bottom: 76px; }
+.quote-entry {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  overflow: hidden;
+}
+.quote-entry summary {
+  min-height: 72px;
+  padding: 14px;
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.quote-entry summary::-webkit-details-marker { display: none; }
+.quote-mark { color: var(--accent); font-size: 1.8rem; line-height: 1; }
+.quote-chevron { color: var(--muted); transition: transform 160ms ease; }
+.quote-entry[open] .quote-chevron { transform: rotate(180deg); }
+.quote-details {
+  padding: 0 14px 14px 48px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+}
+.quote-details > div { padding-top: 12px; display: grid; gap: 3px; }
+.quote-details strong { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+.quote-context p { margin: 0; line-height: 1.5; white-space: pre-wrap; }
+.floating-add-button {
+  position: fixed;
+  right: max(24px, calc((100vw - 1060px) / 2 + 36px));
+  bottom: 88px;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  box-shadow: var(--shadow);
+  font-size: 2rem;
+  line-height: 1;
+  z-index: 8;
+}
+.quote-composer {
+  position: fixed;
+  inset: 0;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.54);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 20;
+}
+.quote-form {
+  width: min(100%, 560px);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  background: var(--panel);
+  display: grid;
+  gap: 14px;
+}
+.composer-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .danger-button {
   min-height: 42px;
   padding: 0 16px;
@@ -424,4 +530,9 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .view { grid-column: 2; grid-row: 2; padding: 28px; }
   .inline-form { grid-template-columns: 1fr auto; align-items: end; }
   .member-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feature-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .feature-tile { aspect-ratio: 4 / 3; }
+  .floating-add-button { bottom: 42px; }
+  .quote-form { border-radius: 8px; }
+  .quote-composer { align-items: center; }
 }
