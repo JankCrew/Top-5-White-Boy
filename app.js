@@ -374,7 +374,7 @@ async function joinGroup(event) {
 
   const { error: memberError } = await state.client
     .from("group_members")
-    .upsert({ group_id: group.id, user_id: state.session.user.id }, { onConflict: "group_id,user_id" });
+    .insert({ group_id: group.id, user_id: state.session.user.id });
 
   if (memberError) {
     showToast(memberError.message);
