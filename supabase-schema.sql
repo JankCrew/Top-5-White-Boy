@@ -295,3 +295,31 @@ with check (status in ('proposed', 'active', 'scheduled', 'ended') and exists (s
 drop policy if exists "creators can delete their hangout plans" on public.hangout_plans;
 create policy "creators can delete their hangout plans" on public.hangout_plans for delete to authenticated
 using (author_id = (select auth.uid()));
+
+
+-- Reusable named addresses for each group
+create table if not exists public.group_addresses (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  name text not null check (char_length(trim(name)) between 1 and 80),
+  address text not null check (char_length(trim(address)) between 1 and 500),
+  created_at timestamptz not null default now(),
+  unique (group_id, name)
+);
+
+create index if not exists group_addresses_group_id_idx on public.group_addresses (group_id);
+grant select, insert, delete on public.group_addresses to authenticated;
+alter table public.group_addresses enable row level security;
+
+drop policy if exists "group members can read saved addresses" on public.group_addresses;
+create policy "group members can read saved addresses" on public.group_addresses for select to authenticated
+using (exists (select 1 from public.group_members gm where gm.group_id = group_addresses.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "group members can add saved addresses" on public.group_addresses;
+create policy "group members can add saved addresses" on public.group_addresses for insert to authenticated
+with check (created_by = (select auth.uid()) and exists (select 1 from public.group_members gm where gm.group_id = group_addresses.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "creators can delete saved addresses" on public.group_addresses;
+create policy "creators can delete saved addresses" on public.group_addresses for delete to authenticated
+using (created_by = (select auth.uid()));
