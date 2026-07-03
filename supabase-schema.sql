@@ -258,3 +258,40 @@ using (voter_id = (select auth.uid())) with check (voter_id = (select auth.uid()
 drop policy if exists "members can remove their own idea vote" on public.idea_votes;
 create policy "members can remove their own idea vote" on public.idea_votes for delete to authenticated
 using (voter_id = (select auth.uid()));
+
+
+-- Proposed, active, and scheduled group hangouts
+create table if not exists public.hangout_plans (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null check (char_length(trim(title)) between 1 and 160),
+  starts_at timestamptz not null,
+  address text not null check (char_length(trim(address)) between 1 and 500),
+  context text check (context is null or char_length(context) <= 3000),
+  status text not null default 'proposed' check (status in ('proposed', 'active', 'scheduled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists hangout_plans_group_status_starts_idx on public.hangout_plans (group_id, status, starts_at);
+grant select, insert, delete on public.hangout_plans to authenticated;
+grant update (status, updated_at) on public.hangout_plans to authenticated;
+alter table public.hangout_plans enable row level security;
+
+drop policy if exists "group members can read hangout plans" on public.hangout_plans;
+create policy "group members can read hangout plans" on public.hangout_plans for select to authenticated
+using (exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "group members can propose hangout plans" on public.hangout_plans;
+create policy "group members can propose hangout plans" on public.hangout_plans for insert to authenticated
+with check (author_id = (select auth.uid()) and status = 'proposed' and exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "group members can activate hangout plans" on public.hangout_plans;
+create policy "group members can activate hangout plans" on public.hangout_plans for update to authenticated
+using (exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())))
+with check (status in ('proposed', 'active', 'scheduled') and exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "creators can delete their hangout plans" on public.hangout_plans;
+create policy "creators can delete their hangout plans" on public.hangout_plans for delete to authenticated
+using (author_id = (select auth.uid()));
