@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rank Circle</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section id="setupPanel" class="panel setup-panel">
+        <p class="eyebrow">Supabase setup</p>
+        <h1>Rank Circle</h1>
+        <p class="muted">Add your Supabase project URL and public anon key to connect the app.</p>
+        <label>Supabase URL<input id="supabaseUrl" type="url" placeholder="https://project.supabase.co" /></label>
+        <label>Anon key<input id="supabaseAnonKey" type="password" placeholder="eyJ..." /></label>
+        <button id="saveConfigButton" class="primary-button" type="button">Save connection</button>
+      </section>
+
+      <section id="authPanel" class="panel auth-panel hidden">
+        <p class="eyebrow">Private friend rankings</p>
+        <h1>Rank your group, then see the average.</h1>
+        <p class="muted">Sign in with email, set a profile, join a group, and submit your personal ranking.</p>
+        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+          <button id="signInTab" class="tab active" type="button">Sign in</button>
+          <button id="signUpTab" class="tab" type="button">Create account</button>
+        </div>
+        <form id="authForm" class="form-stack">
+          <label>Email<input id="emailInput" type="email" autocomplete="email" required /></label>
+          <label>Password<input id="passwordInput" type="password" autocomplete="current-password" minlength="6" required /></label>
+          <button id="authSubmitButton" class="primary-button" type="submit">Sign in</button>
+        </form>
+      </section>
+
+      <section id="appPanel" class="app-panel hidden">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Your circle</p>
+            <h1 id="groupTitle">Rank Circle</h1>
+          </div>
+          <button id="signOutButton" class="icon-button" type="button" aria-label="Sign out">X</button>
+        </header>
+
+        <nav class="app-nav" aria-label="Main views">
+          <button class="nav-item active" data-view="rankingsView" type="button">Ranks</button>
+          <button class="nav-item" data-view="myRankingView" type="button">My list</button>
+          <button class="nav-item" data-view="groupView" type="button">Group</button>
+          <button class="nav-item" data-view="profileView" type="button">Me</button>
+        </nav>
+
+        <section id="rankingsView" class="view active">
+          <div class="section-heading">
+            <div>
+              <h2>Overall ranking</h2>
+              <p id="rankingSubtext" class="muted">Averages update when members submit rankings.</p>
+            </div>
+            <button id="refreshButton" class="secondary-button" type="button">Refresh</button>
+          </div>
+          <div id="overallList" class="rank-list empty-state">Join or create a group to see rankings.</div>
+        </section>
+
+        <section id="myRankingView" class="view">
+          <div class="section-heading">
+            <div>
+              <h2>My ranking</h2>
+              <p class="muted">Use the arrows or drag people into your preferred order, then save.</p>
+            </div>
+            <button id="saveRankingButton" class="primary-button compact" type="button">Save</button>
+          </div>
+          <div id="personalRankingList" class="rank-list empty-state">No group members yet.</div>
+        </section>
+
+        <section id="groupView" class="view">
+          <div class="section-heading">
+            <div>
+              <h2>Group</h2>
+              <p class="muted">Create a circle or join one with an invite code.</p>
+            </div>
+          </div>
+          <form id="createGroupForm" class="form-stack inline-form">
+            <label>New group name<input id="groupNameInput" type="text" maxlength="48" placeholder="Weekend crew" /></label>
+            <button class="primary-button" type="submit">Create</button>
+          </form>
+          <form id="joinGroupForm" class="form-stack inline-form">
+            <label>Invite code<input id="inviteCodeInput" type="text" maxlength="12" placeholder="AB12CD" /></label>
+            <button class="secondary-button" type="submit">Join</button>
+          </form>
+          <div class="group-code"><span>Current invite code</span><strong id="currentInviteCode">None yet</strong></div>
+          <div id="memberList" class="member-grid"></div>
+        </section>
+
+        <section id="profileView" class="view">
+          <div class="section-heading">
+            <div>
+              <h2>Profile</h2>
+              <p class="muted">This is how friends will see you in rankings.</p>
+            </div>
+          </div>
+          <form id="profileForm" class="profile-form">
+            <div class="avatar-preview" id="avatarPreview">?</div>
+            <label>Nickname<input id="nicknameInput" type="text" maxlength="32" placeholder="Your nickname" required /></label>
+            <label>Profile picture URL<input id="avatarUrlInput" type="url" placeholder="https://..." /></label>
+            <button class="primary-button" type="submit">Save profile</button>
+          </form>
+        </section>
+      </section>
+
+      <div id="toast" class="toast hidden" role="status"></div>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
