@@ -12,6 +12,7 @@ const state = {
   group: null,
   members: [],
   personalOrder: [],
+  rankingPreviews: new Map(),
   quotes: [],
   ideas: [],
   hangoutPlans: [],
@@ -245,6 +246,7 @@ async function loadAppData() {
   state.group = membership?.groups || null;
   state.members = [];
   state.personalOrder = [];
+  state.rankingPreviews.clear();
 
   if (state.group) {
     const { data: members, error: membersError } = await state.client
@@ -429,15 +431,70 @@ async function renderOverallRanking() {
   el.overallList.className = "rank-list";
   el.rankingSubtext.textContent = `${data.length} ranked member${data.length === 1 ? "" : "s"}`;
   el.overallList.innerHTML = data.map((person, index) => `
-    <article class="rank-card">
-      <span class="rank-number">${index + 1}</span>
-      ${avatarMarkup(person)}
-      <div>
-        <div class="person-name">${escapeHtml(person.nickname)}</div>
-        <div class="score">Average rank ${Number(person.average_position).toFixed(2)}</div>
-      </div>
+    <article class="leaderboard-card">
+      <button class="leaderboard-toggle" type="button" data-ranking-user="${person.id}" aria-expanded="false">
+        <span class="rank-number">${index + 1}</span>
+        ${avatarMarkup(person)}
+        <span class="leaderboard-copy">
+          <span class="person-name">${escapeHtml(person.nickname)}</span>
+          <span class="score">Average rank ${Number(person.average_position).toFixed(2)}</span>
+        </span>
+        <span class="leaderboard-chevron" aria-hidden="true">&#8964;</span>
+      </button>
+      <div class="ranking-preview hidden" data-ranking-preview="${person.id}"></div>
     </article>
   `).join("");
+}
+
+function topSixMarkup(items) {
+  if (!items.length) {
+    return '<div class="ranking-preview-empty">No personal ranking submitted yet.</div>';
+  }
+
+  return `<div class="top-six-grid">${Array.from({ length: 6 }, (_, index) => {
+    const item = items[index];
+    if (!item?.ranked) {
+      return `<div class="top-six-slot empty" aria-label="Rank ${index + 1} is empty"><span>${index + 1}</span></div>`;
+    }
+    return `
+      <div class="top-six-slot" title="${escapeHtml(item.ranked.nickname)}">
+        <span class="top-six-number">${index + 1}</span>
+        ${avatarMarkup(item.ranked, "top-six-avatar")}
+      </div>
+    `;
+  }).join("")}</div>`;
+}
+
+async function toggleRankingPreview(userId, button) {
+  const panel = el.overallList.querySelector(`[data-ranking-preview="${userId}"]`);
+  if (!panel) return;
+
+  const willOpen = panel.classList.contains("hidden");
+  el.overallList.querySelectorAll(".ranking-preview").forEach((item) => item.classList.add("hidden"));
+  el.overallList.querySelectorAll(".leaderboard-toggle").forEach((item) => item.setAttribute("aria-expanded", "false"));
+  if (!willOpen) return;
+
+  panel.classList.remove("hidden");
+  button.setAttribute("aria-expanded", "true");
+
+  if (!state.rankingPreviews.has(userId)) {
+    panel.innerHTML = '<div class="ranking-preview-empty">Loading...</div>';
+    const { data, error } = await state.client
+      .from("rankings")
+      .select("position, ranked:profiles!rankings_ranked_user_id_fkey(id, nickname, avatar_url)")
+      .eq("group_id", state.group.id)
+      .eq("ranker_id", userId)
+      .lte("position", 6)
+      .order("position", { ascending: true });
+
+    if (error) {
+      panel.innerHTML = `<div class="ranking-preview-empty">${escapeHtml(error.message)}</div>`;
+      return;
+    }
+    state.rankingPreviews.set(userId, data || []);
+  }
+
+  panel.innerHTML = topSixMarkup(state.rankingPreviews.get(userId));
 }
 
 async function saveProfile(event) {
@@ -1076,6 +1133,7 @@ async function saveRanking() {
     return;
   }
 
+  state.rankingPreviews.delete(state.session.user.id);
   showToast("Ranking saved");
   await renderOverallRanking();
 }
@@ -1123,6 +1181,11 @@ function wireEvents() {
   el.leaveGroupButton.addEventListener("click", leaveGroup);
   el.themeToggle.addEventListener("change", () => setTheme(el.themeToggle.checked ? "dark" : "light"));
   el.refreshButton.addEventListener("click", loadAppData);
+  el.overallList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-ranking-user]");
+    if (!button) return;
+    toggleRankingPreview(button.dataset.rankingUser, button);
+  });
   el.profileForm.addEventListener("submit", saveProfile);
   el.createGroupForm.addEventListener("submit", createGroup);
   el.joinGroupForm.addEventListener("submit", joinGroup);
