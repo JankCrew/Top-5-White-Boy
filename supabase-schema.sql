@@ -206,3 +206,55 @@ with check (
     where gm.group_id = quotes.group_id and gm.user_id = (select auth.uid())
   )
 );
+
+
+-- Group ideas and member voting
+create table if not exists public.ideas (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  idea text not null check (char_length(trim(idea)) between 1 and 1000),
+  context text check (context is null or char_length(context) <= 3000),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.idea_votes (
+  idea_id uuid not null references public.ideas(id) on delete cascade,
+  voter_id uuid not null references public.profiles(id) on delete cascade,
+  value smallint not null check (value in (-1, 1)),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (idea_id, voter_id)
+);
+
+create index if not exists ideas_group_id_created_at_idx on public.ideas (group_id, created_at desc);
+create index if not exists idea_votes_voter_id_idx on public.idea_votes (voter_id);
+
+grant select, insert on public.ideas to authenticated;
+grant select, insert, update, delete on public.idea_votes to authenticated;
+alter table public.ideas enable row level security;
+alter table public.idea_votes enable row level security;
+
+drop policy if exists "group members can read ideas" on public.ideas;
+create policy "group members can read ideas" on public.ideas for select to authenticated
+using (exists (select 1 from public.group_members gm where gm.group_id = ideas.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "group members can add ideas" on public.ideas;
+create policy "group members can add ideas" on public.ideas for insert to authenticated
+with check (author_id = (select auth.uid()) and exists (select 1 from public.group_members gm where gm.group_id = ideas.group_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "group members can read idea votes" on public.idea_votes;
+create policy "group members can read idea votes" on public.idea_votes for select to authenticated
+using (exists (select 1 from public.ideas i join public.group_members gm on gm.group_id = i.group_id where i.id = idea_votes.idea_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "members can add their own idea vote" on public.idea_votes;
+create policy "members can add their own idea vote" on public.idea_votes for insert to authenticated
+with check (voter_id = (select auth.uid()) and exists (select 1 from public.ideas i join public.group_members gm on gm.group_id = i.group_id where i.id = idea_votes.idea_id and gm.user_id = (select auth.uid())));
+
+drop policy if exists "members can update their own idea vote" on public.idea_votes;
+create policy "members can update their own idea vote" on public.idea_votes for update to authenticated
+using (voter_id = (select auth.uid())) with check (voter_id = (select auth.uid()));
+
+drop policy if exists "members can remove their own idea vote" on public.idea_votes;
+create policy "members can remove their own idea vote" on public.idea_votes for delete to authenticated
+using (voter_id = (select auth.uid()));
