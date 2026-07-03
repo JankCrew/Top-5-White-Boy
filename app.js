@@ -15,6 +15,7 @@ const state = {
   quotes: [],
   ideas: [],
   hangoutPlans: [],
+  savedAddresses: [],
   avatarFile: null,
   avatarPreviewUrl: null
 };
@@ -72,6 +73,12 @@ const el = {
   hangoutContextInput: document.querySelector("#hangoutContextInput"),
   closeHangoutButton: document.querySelector("#closeHangoutButton"),
   saveHangoutButton: document.querySelector("#saveHangoutButton"),
+  savedAddressForm: document.querySelector("#savedAddressForm"),
+  savedAddressNameInput: document.querySelector("#savedAddressNameInput"),
+  savedAddressValueInput: document.querySelector("#savedAddressValueInput"),
+  saveAddressButton: document.querySelector("#saveAddressButton"),
+  savedAddressList: document.querySelector("#savedAddressList"),
+  hangoutAddressSuggestions: document.querySelector("#hangoutAddressSuggestions"),
   ideasFeatureTitle: document.querySelector("#ideasFeatureTitle"),
   ideaBook: document.querySelector("#ideaBook"),
   ideaBookTitle: document.querySelector("#ideaBookTitle"),
@@ -583,6 +590,39 @@ function planMarkup(plan, includeActions = true) {
   `;
 }
 
+function renderAddressSuggestions() {
+  const suggestions = new Map();
+  state.savedAddresses.forEach((item) => suggestions.set(item.address.toLowerCase(), { address: item.address, label: item.name }));
+  state.hangoutPlans.forEach((plan) => {
+    if (plan.address && !suggestions.has(plan.address.toLowerCase())) {
+      suggestions.set(plan.address.toLowerCase(), { address: plan.address, label: "Previously used" });
+    }
+  });
+
+  el.hangoutAddressSuggestions.innerHTML = Array.from(suggestions.values())
+    .map((item) => `<option value="${escapeHtml(item.address)}" label="${escapeHtml(item.label)}"></option>`)
+    .join("");
+}
+
+function renderSavedAddresses() {
+  if (!state.savedAddresses.length) {
+    el.savedAddressList.innerHTML = '<p class="muted saved-address-empty">No saved places yet.</p>';
+    return;
+  }
+
+  el.savedAddressList.innerHTML = state.savedAddresses.map((item) => `
+    <div class="saved-address-item">
+      <button type="button" class="saved-place-button" data-use-address="${escapeHtml(item.address)}">
+        <strong>${escapeHtml(item.name)}</strong>
+        <span>${escapeHtml(item.address)}</span>
+      </button>
+      ${item.created_by === state.session.user.id
+        ? `<button type="button" class="delete-place-button" data-delete-address="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">X</button>`
+        : ""}
+    </div>
+  `).join("");
+}
+
 function renderHangoutPlans() {
   if (!state.hangoutPlans.length) {
     el.hangoutList.innerHTML = '<div class="empty-state">No hangout proposals yet.</div>';
@@ -602,18 +642,29 @@ function renderHangoutPlans() {
 }
 
 async function loadHangoutPlans() {
-  const { data, error } = await state.client
-    .from("hangout_plans")
-    .select("id, group_id, author_id, title, starts_at, address, context, status, created_at, author:profiles!hangout_plans_author_id_fkey(nickname)")
-    .eq("group_id", state.group.id)
-    .order("starts_at", { ascending: true });
+  const [plansResult, addressesResult] = await Promise.all([
+    state.client
+      .from("hangout_plans")
+      .select("id, group_id, author_id, title, starts_at, address, context, status, created_at, author:profiles!hangout_plans_author_id_fkey(nickname)")
+      .eq("group_id", state.group.id)
+      .order("starts_at", { ascending: true }),
+    state.client
+      .from("group_addresses")
+      .select("id, group_id, created_by, name, address, created_at")
+      .eq("group_id", state.group.id)
+      .order("name", { ascending: true })
+  ]);
 
-  if (error) {
-    showToast(error.message);
+  if (plansResult.error || addressesResult.error) {
+    showToast((plansResult.error || addressesResult.error).message);
     return;
   }
-  state.hangoutPlans = data || [];
+
+  state.hangoutPlans = plansResult.data || [];
+  state.savedAddresses = addressesResult.data || [];
   renderHangoutPlans();
+  renderSavedAddresses();
+  renderAddressSuggestions();
 }
 
 function openHangoutComposer() {
@@ -625,6 +676,43 @@ function openHangoutComposer() {
 
 function closeHangoutComposer() {
   el.hangoutComposer.classList.add("hidden");
+}
+
+async function saveSavedAddress(event) {
+  event.preventDefault();
+  el.saveAddressButton.disabled = true;
+
+  const { error } = await state.client.from("group_addresses").insert({
+    group_id: state.group.id,
+    created_by: state.session.user.id,
+    name: el.savedAddressNameInput.value.trim(),
+    address: el.savedAddressValueInput.value.trim()
+  });
+
+  el.saveAddressButton.disabled = false;
+  if (error) {
+    showToast(error.code === "23505" ? "That place name is already used" : error.message);
+    return;
+  }
+
+  el.savedAddressForm.reset();
+  showToast("Place saved");
+  await loadHangoutPlans();
+}
+
+async function deleteSavedAddress(id) {
+  const { error } = await state.client.from("group_addresses").delete().eq("id", id);
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  showToast("Saved place removed");
+  await loadHangoutPlans();
+}
+
+function useSavedAddress(address) {
+  openHangoutComposer();
+  el.hangoutAddressInput.value = address;
 }
 
 async function saveHangout(event) {
@@ -1029,6 +1117,13 @@ function wireEvents() {
   el.addHangoutButton.addEventListener("click", openHangoutComposer);
   el.closeHangoutButton.addEventListener("click", closeHangoutComposer);
   el.hangoutForm.addEventListener("submit", saveHangout);
+  el.savedAddressForm.addEventListener("submit", saveSavedAddress);
+  el.savedAddressList.addEventListener("click", (event) => {
+    const useButton = event.target.closest("[data-use-address]");
+    const deleteButton = event.target.closest("[data-delete-address]");
+    if (useButton) useSavedAddress(useButton.dataset.useAddress);
+    else if (deleteButton) deleteSavedAddress(deleteButton.dataset.deleteAddress);
+  });
   const handlePlanAction = (event) => {
     const statusButton = event.target.closest("[data-plan-status]");
     const deleteButton = event.target.closest("[data-delete-plan]");
