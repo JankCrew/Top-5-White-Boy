@@ -423,6 +423,57 @@ input:focus, textarea:focus {
 }
 .vote-button.active { border-color: var(--primary); background: var(--soft); color: var(--primary-dark); }
 .vote-score { min-width: 28px; text-align: center; }
+
+.home-plans { margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--line); }
+.compact-heading { margin-bottom: 12px; }
+.plan-list { display: grid; gap: 10px; padding-bottom: 76px; }
+.home-plans .plan-list { padding-bottom: 0; }
+.plan-entry {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  overflow: hidden;
+}
+.plan-entry summary {
+  min-height: 76px;
+  padding: 14px;
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+.plan-entry summary::-webkit-details-marker { display: none; }
+.plan-entry summary > div { display: grid; gap: 4px; }
+.plan-entry summary strong { font-size: 1rem; }
+.plan-time { color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+.plan-entry[open] .quote-chevron { transform: rotate(180deg); }
+.status-badge {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--control-bg);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.status-active { background: var(--soft); color: var(--primary-dark); }
+.status-scheduled { background: #e8eef8; color: #355c91; }
+:root[data-theme="dark"] .status-scheduled { background: #26354a; color: #a9c9f4; }
+.plan-details {
+  padding: 14px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+}
+.plan-details > div { display: grid; gap: 4px; }
+.plan-details strong { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
+.plan-details p { margin: 0; line-height: 1.5; white-space: pre-wrap; }
+.address-actions, .plan-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.map-link { display: inline-grid; place-items: center; text-decoration: none; }
+.plan-actions { padding-top: 12px; border-top: 1px solid var(--line); }
 .floating-add-button {
   position: fixed;
   right: max(24px, calc((100vw - 1060px) / 2 + 36px));
