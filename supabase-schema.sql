@@ -141,9 +141,10 @@ set public = excluded.public,
     allowed_mime_types = excluded.allowed_mime_types;
 
 drop policy if exists "avatar images are publicly readable" on storage.objects;
-create policy "avatar images are publicly readable"
-on storage.objects for select to public
-using (bucket_id = 'avatars');
+drop policy if exists "users can read own avatar metadata" on storage.objects;
+create policy "users can read own avatar metadata"
+on storage.objects for select to authenticated
+using (bucket_id = 'avatars' and (select auth.uid())::text = (storage.foldername(name))[1]);
 
 drop policy if exists "users can upload their own avatar" on storage.objects;
 create policy "users can upload their own avatar"
