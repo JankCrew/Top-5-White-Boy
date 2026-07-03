@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260702-2" />
+    <link rel="stylesheet" href="styles.css?v=20260702-3" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -42,20 +42,15 @@
             <p class="eyebrow">Your circle</p>
             <h1 id="groupTitle">Rank Circle</h1>
           </div>
-          <div class="topbar-actions">
-            <label class="theme-toggle" title="Dark mode">
-              <input id="themeToggle" type="checkbox" role="switch" aria-label="Dark mode" />
-              <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
-            </label>
-            <button id="signOutButton" class="icon-button" type="button" aria-label="Sign out" title="Sign out">X</button>
-          </div>
+          <button id="settingsButton" class="profile-button" type="button" aria-label="Open settings" title="Settings">
+            <span id="headerAvatar" class="header-avatar" aria-hidden="true">?</span>
+          </button>
         </header>
 
         <nav class="app-nav" aria-label="Main views">
           <button class="nav-item active" data-view="rankingsView" type="button">Ranks</button>
           <button class="nav-item" data-view="myRankingView" type="button">My list</button>
           <button class="nav-item" data-view="groupView" type="button">Group</button>
-          <button class="nav-item" data-view="profileView" type="button">Me</button>
         </nav>
 
         <section id="rankingsView" class="view active">
@@ -102,8 +97,8 @@
         <section id="profileView" class="view">
           <div class="section-heading">
             <div>
-              <h2>Profile</h2>
-              <p class="muted">This is how friends will see you in rankings.</p>
+              <h2>Settings</h2>
+              <p class="muted">Manage your profile, appearance, and account.</p>
             </div>
           </div>
           <form id="profileForm" class="profile-form">
@@ -115,12 +110,29 @@
             </label>
             <button id="saveProfileButton" class="primary-button" type="submit">Save profile</button>
           </form>
+          <div class="settings-section">
+            <div>
+              <strong>Dark mode</strong>
+              <p class="muted">Use a darker appearance on this device.</p>
+            </div>
+            <label class="theme-toggle" title="Dark mode">
+              <input id="themeToggle" type="checkbox" role="switch" aria-label="Dark mode" />
+              <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+          <div class="settings-section account-section">
+            <div>
+              <strong>Account</strong>
+              <p class="muted">Sign out of Rank Circle on this device.</p>
+            </div>
+            <button id="signOutButton" class="secondary-button sign-out-button" type="button">Sign out</button>
+          </div>
         </section>
       </section>
 
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260702-2"></script>
+    <script src="app.js?v=20260702-3"></script>
   </body>
 </html>
