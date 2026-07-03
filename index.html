@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260703-20" />
+    <link rel="stylesheet" href="styles.css?v=20260703-21" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -165,8 +165,10 @@
                 <input id="hangoutDateTimeInput" type="datetime-local" required />
               </label>
               <label>Address
-                <input id="hangoutAddressInput" type="text" maxlength="500" placeholder="Optional" list="hangoutAddressSuggestions" autocomplete="street-address" />
-                <datalist id="hangoutAddressSuggestions"></datalist>
+                <div class="address-autocomplete">
+                  <input id="hangoutAddressInput" type="text" maxlength="500" placeholder="Optional" autocomplete="street-address" aria-autocomplete="list" aria-controls="hangoutAddressSuggestions" />
+                  <div id="hangoutAddressSuggestions" class="address-suggestions hidden" role="listbox"></div>
+                </div>
               </label>
               <label>More context
                 <textarea id="hangoutContextInput" rows="4" maxlength="3000" placeholder="Anything the group should know"></textarea>
@@ -301,6 +303,6 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260703-20"></script>
+    <script src="app.js?v=20260703-21"></script>
   </body>
 </html>
