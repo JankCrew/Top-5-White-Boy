@@ -424,6 +424,43 @@ input:focus, textarea:focus {
 .vote-button.active { border-color: var(--primary); background: var(--soft); color: var(--primary-dark); }
 .vote-score { min-width: 28px; text-align: center; }
 
+.saved-places-section { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.saved-address-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.saved-address-list { display: grid; gap: 8px; margin-top: 12px; }
+.saved-address-empty { margin: 12px 0 0; }
+.saved-address-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+  gap: 6px;
+}
+.saved-place-button {
+  min-width: 0;
+  min-height: 54px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--ink);
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+.saved-place-button strong, .saved-place-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-place-button span { color: var(--muted); font-size: 0.78rem; }
+.delete-place-button {
+  width: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--control-bg);
+  color: var(--muted);
+  font-weight: 900;
+}
 .home-plans { margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--line); }
 .compact-heading { margin-bottom: 12px; }
 .plan-list { display: grid; gap: 10px; padding-bottom: 76px; }
@@ -606,6 +643,7 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .inline-form { grid-template-columns: 1fr auto; align-items: end; }
   .member-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .feature-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .saved-address-form { grid-template-columns: minmax(120px, 0.7fr) minmax(200px, 1.5fr) auto; }
   .feature-tile { aspect-ratio: 4 / 3; }
   .floating-add-button { bottom: 42px; }
   .quote-form { border-radius: 8px; }
