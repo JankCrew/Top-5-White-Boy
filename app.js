@@ -14,6 +14,7 @@ const state = {
   personalOrder: [],
   quotes: [],
   ideas: [],
+  hangoutPlans: [],
   avatarFile: null,
   avatarPreviewUrl: null
 };
@@ -42,6 +43,8 @@ const el = {
   groupNavItem: document.querySelector("#groupNavItem"),
   groupTitle: document.querySelector("#groupTitle"),
   rankingSubtext: document.querySelector("#rankingSubtext"),
+  homePlansSection: document.querySelector("#homePlansSection"),
+  homePlansList: document.querySelector("#homePlansList"),
   overallList: document.querySelector("#overallList"),
   personalRankingList: document.querySelector("#personalRankingList"),
   saveRankingButton: document.querySelector("#saveRankingButton"),
@@ -57,6 +60,18 @@ const el = {
   quoteContextInput: document.querySelector("#quoteContextInput"),
   closeQuoteButton: document.querySelector("#closeQuoteButton"),
   saveQuoteButton: document.querySelector("#saveQuoteButton"),
+  hangoutBook: document.querySelector("#hangoutBook"),
+  hangoutList: document.querySelector("#hangoutList"),
+  hangoutBackButton: document.querySelector("#hangoutBackButton"),
+  addHangoutButton: document.querySelector("#addHangoutButton"),
+  hangoutComposer: document.querySelector("#hangoutComposer"),
+  hangoutForm: document.querySelector("#hangoutForm"),
+  hangoutTitleInput: document.querySelector("#hangoutTitleInput"),
+  hangoutDateTimeInput: document.querySelector("#hangoutDateTimeInput"),
+  hangoutAddressInput: document.querySelector("#hangoutAddressInput"),
+  hangoutContextInput: document.querySelector("#hangoutContextInput"),
+  closeHangoutButton: document.querySelector("#closeHangoutButton"),
+  saveHangoutButton: document.querySelector("#saveHangoutButton"),
   ideasFeatureTitle: document.querySelector("#ideasFeatureTitle"),
   ideaBook: document.querySelector("#ideaBook"),
   ideaBookTitle: document.querySelector("#ideaBookTitle"),
@@ -248,6 +263,7 @@ async function loadAppData() {
 
   render();
   await renderOverallRanking();
+  if (state.group) await loadHangoutPlans();
 }
 
 function render() {
@@ -509,6 +525,160 @@ async function joinGroup(event) {
   await loadAppData();
 }
 
+function localDateTimeValue(date = new Date()) {
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function formatPlanDate(value) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function mapsUrl(address) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+function planMarkup(plan, includeActions = true) {
+  const canDelete = plan.author_id === state.session.user.id;
+  const actions = includeActions ? `
+    <div class="plan-actions">
+      <button class="secondary-button compact-button" type="button" data-plan-status="active" data-plan-id="${plan.id}">Activate</button>
+      <button class="secondary-button compact-button" type="button" data-plan-status="scheduled" data-plan-id="${plan.id}">Schedule</button>
+      ${canDelete ? `<button class="danger-button compact-button" type="button" data-delete-plan="${plan.id}">Delete</button>` : ""}
+    </div>
+  ` : "";
+
+  return `
+    <details class="plan-entry">
+      <summary>
+        <div>
+          <span class="status-badge status-${plan.status}">${escapeHtml(plan.status)}</span>
+          <strong>${escapeHtml(plan.title)}</strong>
+          <span class="plan-time">${escapeHtml(formatPlanDate(plan.starts_at))}</span>
+        </div>
+        <span class="quote-chevron" aria-hidden="true">&#8964;</span>
+      </summary>
+      <div class="plan-details">
+        <div><strong>Proposed by</strong><span>${escapeHtml(plan.author?.nickname || "Group member")}</span></div>
+        <div>
+          <strong>Address</strong>
+          <span>${escapeHtml(plan.address)}</span>
+          <div class="address-actions">
+            <button type="button" class="secondary-button compact-button" data-copy-address="${escapeHtml(plan.address)}">Copy</button>
+            <a class="secondary-button compact-button map-link" href="${escapeHtml(mapsUrl(plan.address))}" target="_blank" rel="noopener">Maps</a>
+          </div>
+        </div>
+        ${plan.context ? `<div><strong>Context</strong><p>${escapeHtml(plan.context)}</p></div>` : ""}
+        ${actions}
+      </div>
+    </details>
+  `;
+}
+
+function renderHangoutPlans() {
+  if (!state.hangoutPlans.length) {
+    el.hangoutList.innerHTML = '<div class="empty-state">No hangout proposals yet.</div>';
+  } else {
+    el.hangoutList.innerHTML = state.hangoutPlans.map((plan) => planMarkup(plan)).join("");
+  }
+
+  const now = Date.now();
+  const visible = state.hangoutPlans.filter((plan) =>
+    plan.status === "active" || (plan.status === "scheduled" && new Date(plan.starts_at).getTime() >= now)
+  );
+  el.homePlansSection.classList.toggle("hidden", !visible.length);
+  el.homePlansList.innerHTML = visible.map((plan) => planMarkup(plan, false)).join("");
+}
+
+async function loadHangoutPlans() {
+  const { data, error } = await state.client
+    .from("hangout_plans")
+    .select("id, group_id, author_id, title, starts_at, address, context, status, created_at, author:profiles!hangout_plans_author_id_fkey(nickname)")
+    .eq("group_id", state.group.id)
+    .order("starts_at", { ascending: true });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  state.hangoutPlans = data || [];
+  renderHangoutPlans();
+}
+
+function openHangoutComposer() {
+  el.hangoutForm.reset();
+  el.hangoutDateTimeInput.value = localDateTimeValue(new Date(Date.now() + 86400000));
+  el.hangoutComposer.classList.remove("hidden");
+  el.hangoutTitleInput.focus();
+}
+
+function closeHangoutComposer() {
+  el.hangoutComposer.classList.add("hidden");
+}
+
+async function saveHangout(event) {
+  event.preventDefault();
+  el.saveHangoutButton.disabled = true;
+  el.saveHangoutButton.textContent = "Adding...";
+
+  const { error } = await state.client.from("hangout_plans").insert({
+    group_id: state.group.id,
+    author_id: state.session.user.id,
+    title: el.hangoutTitleInput.value.trim(),
+    starts_at: new Date(el.hangoutDateTimeInput.value).toISOString(),
+    address: el.hangoutAddressInput.value.trim(),
+    context: el.hangoutContextInput.value.trim() || null,
+    status: "proposed"
+  });
+
+  el.saveHangoutButton.disabled = false;
+  el.saveHangoutButton.textContent = "Add proposal";
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  closeHangoutComposer();
+  showToast("Hangout proposed");
+  await loadHangoutPlans();
+}
+
+async function updatePlanStatus(planId, status) {
+  const { error } = await state.client
+    .from("hangout_plans")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", planId);
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  showToast(status === "active" ? "Plan is active" : "Plan scheduled");
+  await loadHangoutPlans();
+}
+
+async function deleteHangout(planId) {
+  if (!window.confirm("Delete this hangout proposal?")) return;
+  const { error } = await state.client.from("hangout_plans").delete().eq("id", planId);
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  showToast("Proposal deleted");
+  await loadHangoutPlans();
+}
+
+async function copyAddress(address) {
+  try {
+    await navigator.clipboard.writeText(address);
+    showToast("Address copied");
+  } catch {
+    showToast(address);
+  }
+}
+
 function localDateValue(date = new Date()) {
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return offsetDate.toISOString().slice(0, 10);
@@ -559,13 +729,11 @@ async function loadQuotes() {
 }
 
 async function openFeature(feature) {
-  if (feature === "hangouts") {
-    showToast("That feature is coming next");
-    return;
-  }
-
   el.featuresHub.classList.add("hidden");
-  if (feature === "quotes") {
+  if (feature === "hangouts") {
+    el.hangoutBook.classList.remove("hidden");
+    await loadHangoutPlans();
+  } else if (feature === "quotes") {
     el.quoteBook.classList.remove("hidden");
     await loadQuotes();
   } else if (feature === "ideas") {
@@ -576,6 +744,7 @@ async function openFeature(feature) {
 
 function showFeaturesHub() {
   el.quoteBook.classList.add("hidden");
+  el.hangoutBook.classList.add("hidden");
   el.ideaBook.classList.add("hidden");
   el.featuresHub.classList.remove("hidden");
 }
@@ -848,6 +1017,20 @@ function wireEvents() {
   el.joinGroupForm.addEventListener("submit", joinGroup);
   el.saveRankingButton.addEventListener("click", saveRanking);
   el.quoteBackButton.addEventListener("click", showFeaturesHub);
+  el.hangoutBackButton.addEventListener("click", showFeaturesHub);
+  el.addHangoutButton.addEventListener("click", openHangoutComposer);
+  el.closeHangoutButton.addEventListener("click", closeHangoutComposer);
+  el.hangoutForm.addEventListener("submit", saveHangout);
+  const handlePlanAction = (event) => {
+    const statusButton = event.target.closest("[data-plan-status]");
+    const deleteButton = event.target.closest("[data-delete-plan]");
+    const copyButton = event.target.closest("[data-copy-address]");
+    if (statusButton) updatePlanStatus(statusButton.dataset.planId, statusButton.dataset.planStatus);
+    else if (deleteButton) deleteHangout(deleteButton.dataset.deletePlan);
+    else if (copyButton) copyAddress(copyButton.dataset.copyAddress);
+  };
+  el.hangoutList.addEventListener("click", handlePlanAction);
+  el.homePlansList.addEventListener("click", handlePlanAction);
   el.ideaBackButton.addEventListener("click", showFeaturesHub);
   el.addIdeaButton.addEventListener("click", openIdeaComposer);
   el.closeIdeaButton.addEventListener("click", closeIdeaComposer);
