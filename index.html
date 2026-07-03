@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260703-14" />
+    <link rel="stylesheet" href="styles.css?v=20260703-15" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -63,6 +63,15 @@
             <button id="refreshButton" class="secondary-button" type="button">Refresh</button>
           </div>
           <div id="overallList" class="rank-list empty-state">Join or create a group to see rankings.</div>
+          <section id="homePlansSection" class="home-plans hidden">
+            <div class="section-heading compact-heading">
+              <div>
+                <h2>Active & upcoming</h2>
+                <p class="muted">Hangouts your group has activated or scheduled.</p>
+              </div>
+            </div>
+            <div id="homePlansList" class="plan-list"></div>
+          </section>
         </section>
 
         <section id="myRankingView" class="view">
@@ -113,6 +122,42 @@
             </div>
             <div id="quoteList" class="quote-list"></div>
             <button id="addQuoteButton" class="floating-add-button" type="button" aria-label="Add a quote" title="Add quote">+</button>
+          </div>
+
+          <div id="hangoutBook" class="feature-screen hidden">
+            <div class="section-heading">
+              <div class="heading-with-back">
+                <button id="hangoutBackButton" class="back-button" type="button" aria-label="Back to features">&#8592;</button>
+                <div>
+                  <h2>Hangout Plans</h2>
+                  <p class="muted">Propose a plan, then activate or schedule it.</p>
+                </div>
+              </div>
+            </div>
+            <div id="hangoutList" class="plan-list"></div>
+            <button id="addHangoutButton" class="floating-add-button" type="button" aria-label="Add a hangout proposal" title="Add proposal">+</button>
+          </div>
+
+          <div id="hangoutComposer" class="quote-composer hidden" role="dialog" aria-modal="true" aria-labelledby="hangoutComposerTitle">
+            <form id="hangoutForm" class="quote-form">
+              <div class="composer-heading">
+                <h2 id="hangoutComposerTitle">Propose a hangout</h2>
+                <button id="closeHangoutButton" class="icon-button" type="button" aria-label="Close hangout form">X</button>
+              </div>
+              <label>Title
+                <input id="hangoutTitleInput" type="text" maxlength="160" placeholder="Movie night" required />
+              </label>
+              <label>Date and time
+                <input id="hangoutDateTimeInput" type="datetime-local" required />
+              </label>
+              <label>Address
+                <input id="hangoutAddressInput" type="text" maxlength="500" placeholder="123 Main St" required />
+              </label>
+              <label>More context
+                <textarea id="hangoutContextInput" rows="4" maxlength="3000" placeholder="Anything the group should know"></textarea>
+              </label>
+              <button id="saveHangoutButton" class="primary-button" type="submit">Add proposal</button>
+            </form>
           </div>
 
           <div id="ideaBook" class="feature-screen hidden">
@@ -241,6 +286,6 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260703-14"></script>
+    <script src="app.js?v=20260703-15"></script>
   </body>
 </html>
