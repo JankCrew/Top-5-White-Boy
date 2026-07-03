@@ -34,6 +34,9 @@ const el = {
   headerAvatar: document.querySelector("#headerAvatar"),
   themeToggle: document.querySelector("#themeToggle"),
   refreshButton: document.querySelector("#refreshButton"),
+  homeNavItem: document.querySelector("#homeNavItem"),
+  rankingNavItem: document.querySelector("#rankingNavItem"),
+  groupNavItem: document.querySelector("#groupNavItem"),
   groupTitle: document.querySelector("#groupTitle"),
   rankingSubtext: document.querySelector("#rankingSubtext"),
   overallList: document.querySelector("#overallList"),
@@ -44,6 +47,9 @@ const el = {
   joinGroupForm: document.querySelector("#joinGroupForm"),
   inviteCodeInput: document.querySelector("#inviteCodeInput"),
   currentInviteCode: document.querySelector("#currentInviteCode"),
+  groupSettings: document.querySelector("#groupSettings"),
+  copyInviteButton: document.querySelector("#copyInviteButton"),
+  leaveGroupButton: document.querySelector("#leaveGroupButton"),
   memberList: document.querySelector("#memberList"),
   profileForm: document.querySelector("#profileForm"),
   nicknameInput: document.querySelector("#nicknameInput"),
@@ -220,6 +226,8 @@ async function loadAppData() {
 function render() {
   el.groupTitle.textContent = state.group?.name || "Rank Circle";
   el.currentInviteCode.textContent = state.group?.invite_code || "None yet";
+  el.groupSettings.classList.toggle("hidden", !state.group);
+  updateNavigation();
   el.settingsButton.innerHTML = avatarMarkup(state.profile || {}, "header-avatar");
   el.nicknameInput.value = state.profile?.nickname || "";
   el.avatarFileInput.value = "";
@@ -227,6 +235,20 @@ function render() {
   renderAvatarPreview();
   renderMembers();
   renderPersonalRanking();
+}
+
+function updateNavigation() {
+  const hasGroup = Boolean(state.group);
+  el.homeNavItem.classList.toggle("hidden", !hasGroup);
+  el.rankingNavItem.classList.toggle("hidden", !hasGroup);
+  el.groupNavItem.classList.toggle("hidden", hasGroup);
+
+  const activeView = document.querySelector(".view.active")?.id;
+  if (!hasGroup && activeView !== "groupView" && activeView !== "profileView") {
+    switchView("groupView");
+  } else if (hasGroup && activeView === "groupView") {
+    switchView("rankingsView");
+  }
 }
 
 function renderAvatarPreview() {
@@ -457,6 +479,36 @@ async function joinGroup(event) {
   await loadAppData();
 }
 
+async function copyInviteCode() {
+  if (!state.group) return;
+  try {
+    await navigator.clipboard.writeText(state.group.invite_code);
+    showToast("Invite code copied");
+  } catch {
+    showToast(`Invite code: ${state.group.invite_code}`);
+  }
+}
+
+async function leaveGroup() {
+  if (!state.group || !window.confirm("Leave this group?")) return;
+
+  el.leaveGroupButton.disabled = true;
+  const { error } = await state.client
+    .from("group_members")
+    .delete()
+    .eq("group_id", state.group.id)
+    .eq("user_id", state.session.user.id);
+
+  el.leaveGroupButton.disabled = false;
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  showToast("You left the group");
+  await loadAppData();
+}
+
 function moveRanking(userId, direction) {
   const index = state.personalOrder.indexOf(userId);
   const nextIndex = direction === "up" ? index - 1 : index + 1;
@@ -532,6 +584,8 @@ function wireEvents() {
 
   el.signOutButton.addEventListener("click", () => state.client.auth.signOut());
   el.settingsButton.addEventListener("click", () => switchView("profileView"));
+  el.copyInviteButton.addEventListener("click", copyInviteCode);
+  el.leaveGroupButton.addEventListener("click", leaveGroup);
   el.themeToggle.addEventListener("change", () => setTheme(el.themeToggle.checked ? "dark" : "light"));
   el.refreshButton.addEventListener("click", loadAppData);
   el.profileForm.addEventListener("submit", saveProfile);
