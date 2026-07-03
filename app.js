@@ -13,6 +13,7 @@ const state = {
   members: [],
   personalOrder: [],
   quotes: [],
+  ideas: [],
   avatarFile: null,
   avatarPreviewUrl: null
 };
@@ -57,6 +58,17 @@ const el = {
   closeQuoteButton: document.querySelector("#closeQuoteButton"),
   saveQuoteButton: document.querySelector("#saveQuoteButton"),
   ideasFeatureTitle: document.querySelector("#ideasFeatureTitle"),
+  ideaBook: document.querySelector("#ideaBook"),
+  ideaBookTitle: document.querySelector("#ideaBookTitle"),
+  ideaList: document.querySelector("#ideaList"),
+  ideaBackButton: document.querySelector("#ideaBackButton"),
+  addIdeaButton: document.querySelector("#addIdeaButton"),
+  ideaComposer: document.querySelector("#ideaComposer"),
+  ideaForm: document.querySelector("#ideaForm"),
+  ideaInput: document.querySelector("#ideaInput"),
+  ideaContextInput: document.querySelector("#ideaContextInput"),
+  closeIdeaButton: document.querySelector("#closeIdeaButton"),
+  saveIdeaButton: document.querySelector("#saveIdeaButton"),
   createGroupForm: document.querySelector("#createGroupForm"),
   groupNameInput: document.querySelector("#groupNameInput"),
   joinGroupForm: document.querySelector("#joinGroupForm"),
@@ -243,6 +255,7 @@ function render() {
   el.currentInviteCode.textContent = state.group?.invite_code || "None yet";
   el.groupSettings.classList.toggle("hidden", !state.group);
   el.ideasFeatureTitle.textContent = `${state.group?.name || "Group"} Ideas`;
+  el.ideaBookTitle.textContent = `${state.group?.name || "Group"} Ideas`;
   updateNavigation();
   el.settingsButton.innerHTML = avatarMarkup(state.profile || {}, "header-avatar");
   el.nicknameInput.value = state.profile?.nickname || "";
@@ -546,18 +559,24 @@ async function loadQuotes() {
 }
 
 async function openFeature(feature) {
-  if (feature !== "quotes") {
+  if (feature === "hangouts") {
     showToast("That feature is coming next");
     return;
   }
 
   el.featuresHub.classList.add("hidden");
-  el.quoteBook.classList.remove("hidden");
-  await loadQuotes();
+  if (feature === "quotes") {
+    el.quoteBook.classList.remove("hidden");
+    await loadQuotes();
+  } else if (feature === "ideas") {
+    el.ideaBook.classList.remove("hidden");
+    await loadIdeas();
+  }
 }
 
 function showFeaturesHub() {
   el.quoteBook.classList.add("hidden");
+  el.ideaBook.classList.add("hidden");
   el.featuresHub.classList.remove("hidden");
 }
 
@@ -600,6 +619,119 @@ async function saveQuote(event) {
   closeQuoteComposer();
   showToast("Quote added");
   await loadQuotes();
+}
+
+function renderIdeas() {
+  if (!state.ideas.length) {
+    el.ideaList.innerHTML = '<div class="empty-state">No ideas yet. Add the first one.</div>';
+    return;
+  }
+
+  el.ideaList.innerHTML = state.ideas.map((item) => {
+    const votes = item.idea_votes || [];
+    const score = votes.reduce((total, vote) => total + Number(vote.value), 0);
+    const ownVote = votes.find((vote) => vote.voter_id === state.session.user.id)?.value || 0;
+    return `
+      <article class="idea-entry">
+        <details>
+          <summary>
+            <span class="feature-icon idea-bulb" aria-hidden="true">&#9733;</span>
+            <span>${escapeHtml(item.idea)}</span>
+            <span class="quote-chevron" aria-hidden="true">&#8964;</span>
+          </summary>
+          <div class="quote-details">
+            <div><strong>Added by</strong><span>${escapeHtml(item.profiles?.nickname || "Group member")}</span></div>
+            ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
+          </div>
+        </details>
+        <div class="vote-row">
+          <button class="vote-button ${ownVote === 1 ? "active" : ""}" type="button" data-vote="1" data-idea-id="${item.id}" aria-label="Upvote">&#8593;</button>
+          <strong class="vote-score" aria-label="Vote score">${score}</strong>
+          <button class="vote-button ${ownVote === -1 ? "active" : ""}" type="button" data-vote="-1" data-idea-id="${item.id}" aria-label="Downvote">&#8595;</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+async function loadIdeas() {
+  const { data, error } = await state.client
+    .from("ideas")
+    .select("id, idea, context, created_at, profiles(nickname), idea_votes(voter_id, value)")
+    .eq("group_id", state.group.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  state.ideas = data || [];
+  renderIdeas();
+}
+
+function openIdeaComposer() {
+  el.ideaForm.reset();
+  el.ideaComposer.classList.remove("hidden");
+  el.ideaInput.focus();
+}
+
+function closeIdeaComposer() {
+  el.ideaComposer.classList.add("hidden");
+}
+
+async function saveIdea(event) {
+  event.preventDefault();
+  const idea = el.ideaInput.value.trim();
+  const context = el.ideaContextInput.value.trim() || null;
+  if (!idea || !state.group) return;
+
+  el.saveIdeaButton.disabled = true;
+  el.saveIdeaButton.textContent = "Saving...";
+  const { error } = await state.client.from("ideas").insert({
+    group_id: state.group.id,
+    author_id: state.session.user.id,
+    idea,
+    context
+  });
+  el.saveIdeaButton.disabled = false;
+  el.saveIdeaButton.textContent = "Save idea";
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  closeIdeaComposer();
+  showToast("Idea added");
+  await loadIdeas();
+}
+
+async function voteOnIdea(ideaId, value) {
+  const idea = state.ideas.find((item) => item.id === ideaId);
+  const ownVote = idea?.idea_votes?.find((vote) => vote.voter_id === state.session.user.id)?.value || 0;
+  let error;
+
+  if (Number(ownVote) === value) {
+    ({ error } = await state.client
+      .from("idea_votes")
+      .delete()
+      .eq("idea_id", ideaId)
+      .eq("voter_id", state.session.user.id));
+  } else {
+    ({ error } = await state.client
+      .from("idea_votes")
+      .upsert(
+        { idea_id: ideaId, voter_id: state.session.user.id, value },
+        { onConflict: "idea_id,voter_id" }
+      ));
+  }
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  await loadIdeas();
 }
 
 async function copyInviteCode() {
@@ -716,6 +848,15 @@ function wireEvents() {
   el.joinGroupForm.addEventListener("submit", joinGroup);
   el.saveRankingButton.addEventListener("click", saveRanking);
   el.quoteBackButton.addEventListener("click", showFeaturesHub);
+  el.ideaBackButton.addEventListener("click", showFeaturesHub);
+  el.addIdeaButton.addEventListener("click", openIdeaComposer);
+  el.closeIdeaButton.addEventListener("click", closeIdeaComposer);
+  el.ideaForm.addEventListener("submit", saveIdea);
+  el.ideaList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-vote]");
+    if (!button) return;
+    voteOnIdea(button.dataset.ideaId, Number(button.dataset.vote));
+  });
   el.addQuoteButton.addEventListener("click", openQuoteComposer);
   el.closeQuoteButton.addEventListener("click", closeQuoteComposer);
   el.quoteForm.addEventListener("submit", saveQuote);
