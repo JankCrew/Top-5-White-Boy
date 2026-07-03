@@ -134,15 +134,27 @@ async function bootstrap() {
 
 async function ensureProfile() {
   const user = state.session.user;
-  const fallbackNickname = user.email?.split("@")[0] || "New friend";
-  const { data, error } = await state.client
+  const { data: existingProfile, error: lookupError } = await state.client
     .from("profiles")
-    .upsert({ id: user.id, email: user.email, nickname: fallbackNickname }, { onConflict: "id", ignoreDuplicates: true })
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+  if (existingProfile) {
+    state.profile = existingProfile;
+    return;
+  }
+
+  const fallbackNickname = user.email?.split("@")[0] || "New friend";
+  const { data: newProfile, error: insertError } = await state.client
+    .from("profiles")
+    .insert({ id: user.id, email: user.email, nickname: fallbackNickname })
     .select()
     .single();
 
-  if (error) throw error;
-  state.profile = data;
+  if (insertError) throw insertError;
+  state.profile = newProfile;
 }
 
 async function loadAppData() {
