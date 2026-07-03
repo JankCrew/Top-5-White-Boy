@@ -30,6 +30,8 @@ const el = {
   emailInput: document.querySelector("#emailInput"),
   passwordInput: document.querySelector("#passwordInput"),
   signOutButton: document.querySelector("#signOutButton"),
+  settingsButton: document.querySelector("#settingsButton"),
+  headerAvatar: document.querySelector("#headerAvatar"),
   themeToggle: document.querySelector("#themeToggle"),
   refreshButton: document.querySelector("#refreshButton"),
   groupTitle: document.querySelector("#groupTitle"),
@@ -218,6 +220,7 @@ async function loadAppData() {
 function render() {
   el.groupTitle.textContent = state.group?.name || "Rank Circle";
   el.currentInviteCode.textContent = state.group?.invite_code || "None yet";
+  el.settingsButton.innerHTML = avatarMarkup(state.profile || {}, "header-avatar");
   el.nicknameInput.value = state.profile?.nickname || "";
   el.avatarFileInput.value = "";
   state.avatarFile = null;
@@ -528,6 +531,7 @@ function wireEvents() {
   });
 
   el.signOutButton.addEventListener("click", () => state.client.auth.signOut());
+  el.settingsButton.addEventListener("click", () => switchView("profileView"));
   el.themeToggle.addEventListener("change", () => setTheme(el.themeToggle.checked ? "dark" : "light"));
   el.refreshButton.addEventListener("click", loadAppData);
   el.profileForm.addEventListener("submit", saveProfile);
