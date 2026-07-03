@@ -324,6 +324,22 @@ input:focus {
 .settings-section strong { display: block; }
 .settings-section .muted { margin: 4px 0 0; font-size: 0.86rem; }
 .sign-out-button { flex: 0 0 auto; }
+.settings-group { max-width: 520px; margin-top: 28px; }
+.settings-group .settings-section { margin-top: 0; }
+.invite-actions { display: flex; align-items: center; gap: 8px; }
+.settings-invite-code { font-size: 1.05rem; }
+.compact-button { min-height: 38px; padding: 0 12px; }
+.settings-members { margin: 4px 0 22px; }
+.danger-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #c74736;
+  border-radius: 8px;
+  background: transparent;
+  color: #c74736;
+  font-weight: 800;
+}
+:root[data-theme="dark"] .danger-button { border-color: #ff8062; color: #ff8062; }
 
 .avatar-preview {
   width: 92px;
@@ -362,7 +378,7 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .app-nav {
   order: 3;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 8px;
   padding: 10px;
   background: var(--card-bg);
