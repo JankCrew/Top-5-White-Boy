@@ -534,7 +534,7 @@ function renderQuotes() {
       </summary>
       <div class="quote-details">
         <div><strong>Date</strong><span>${escapeHtml(formatQuoteDate(item.quote_date))}</span></div>
-        <div><strong>Added by</strong><span>${escapeHtml(item.profiles?.nickname || "Group member")}</span></div>
+        <div><strong>Added by</strong><span>${escapeHtml(item.author?.nickname || "Group member")}</span></div>
         ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
       </div>
     </details>
@@ -657,7 +657,7 @@ function renderIdeas() {
 async function loadIdeas() {
   const { data, error } = await state.client
     .from("ideas")
-    .select("id, idea, context, created_at, profiles(nickname), idea_votes(voter_id, value)")
+    .select("id, idea, context, created_at, author:profiles!ideas_author_id_fkey(nickname), idea_votes(voter_id, value)")
     .eq("group_id", state.group.id)
     .order("created_at", { ascending: false });
 
