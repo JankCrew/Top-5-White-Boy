@@ -267,9 +267,9 @@ create table if not exists public.hangout_plans (
   author_id uuid not null references public.profiles(id) on delete cascade,
   title text not null check (char_length(trim(title)) between 1 and 160),
   starts_at timestamptz not null,
-  address text not null check (char_length(trim(address)) between 1 and 500),
+  address text check (address is null or char_length(trim(address)) between 1 and 500),
   context text check (context is null or char_length(context) <= 3000),
-  status text not null default 'proposed' check (status in ('proposed', 'active', 'scheduled')),
+  status text not null default 'proposed' check (status in ('proposed', 'active', 'scheduled', 'ended')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -290,7 +290,7 @@ with check (author_id = (select auth.uid()) and status = 'proposed' and exists (
 drop policy if exists "group members can activate hangout plans" on public.hangout_plans;
 create policy "group members can activate hangout plans" on public.hangout_plans for update to authenticated
 using (exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())))
-with check (status in ('proposed', 'active', 'scheduled') and exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())));
+with check (status in ('proposed', 'active', 'scheduled', 'ended') and exists (select 1 from public.group_members gm where gm.group_id = hangout_plans.group_id and gm.user_id = (select auth.uid())));
 
 drop policy if exists "creators can delete their hangout plans" on public.hangout_plans;
 create policy "creators can delete their hangout plans" on public.hangout_plans for delete to authenticated
