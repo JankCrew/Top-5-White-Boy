@@ -34,7 +34,8 @@ create table if not exists public.rankings (
   primary key (group_id, ranker_id, ranked_user_id)
 );
 
-create or replace view public.group_rankings as
+create or replace view public.group_rankings
+with (security_invoker = true) as
 select
   r.group_id,
   p.id,
@@ -45,6 +46,12 @@ select
 from public.rankings r
 join public.profiles p on p.id = r.ranked_user_id
 group by r.group_id, p.id, p.nickname, p.avatar_url;
+
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert on public.groups to authenticated;
+grant select, insert on public.group_members to authenticated;
+grant select, insert, update on public.rankings to authenticated;
+grant select on public.group_rankings to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.groups enable row level security;
@@ -82,17 +89,11 @@ on public.groups for insert
 to authenticated
 with check (created_by = auth.uid());
 
-drop policy if exists "members can read group members" on public.group_members;
-create policy "members can read group members"
+drop policy if exists "group memberships are readable by signed in users" on public.group_members;
+create policy "group memberships are readable by signed in users"
 on public.group_members for select
 to authenticated
-using (
-  user_id = auth.uid()
-  or exists (
-    select 1 from public.group_members mine
-    where mine.group_id = group_members.group_id and mine.user_id = auth.uid()
-  )
-);
+using (true);
 
 drop policy if exists "users can join groups as themselves" on public.group_members;
 create policy "users can join groups as themselves"
