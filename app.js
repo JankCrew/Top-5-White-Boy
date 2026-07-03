@@ -590,7 +590,7 @@ function planMarkup(plan, includeActions = true) {
   `;
 }
 
-function renderAddressSuggestions() {
+function getAddressSuggestions() {
   const suggestions = new Map();
   state.savedAddresses.forEach((item) => suggestions.set(item.address.toLowerCase(), { address: item.address, label: item.name }));
   state.hangoutPlans.forEach((plan) => {
@@ -598,10 +598,22 @@ function renderAddressSuggestions() {
       suggestions.set(plan.address.toLowerCase(), { address: plan.address, label: "Previously used" });
     }
   });
+  return Array.from(suggestions.values());
+}
 
-  el.hangoutAddressSuggestions.innerHTML = Array.from(suggestions.values())
-    .map((item) => `<option value="${escapeHtml(item.address)}" label="${escapeHtml(item.label)}"></option>`)
-    .join("");
+function renderAddressSuggestions(query = "") {
+  const search = query.trim().toLowerCase();
+  const matches = getAddressSuggestions()
+    .filter((item) => !search || item.address.toLowerCase().includes(search) || item.label.toLowerCase().includes(search))
+    .slice(0, 8);
+
+  el.hangoutAddressSuggestions.innerHTML = matches.map((item) => `
+    <button type="button" class="address-suggestion" role="option" data-select-address="${escapeHtml(item.address)}">
+      <strong>${escapeHtml(item.label)}</strong>
+      <span>${escapeHtml(item.address)}</span>
+    </button>
+  `).join("");
+  el.hangoutAddressSuggestions.classList.toggle("hidden", !matches.length);
 }
 
 function renderSavedAddresses() {
@@ -616,9 +628,12 @@ function renderSavedAddresses() {
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(item.address)}</span>
       </button>
-      ${item.created_by === state.session.user.id
-        ? `<button type="button" class="delete-place-button" data-delete-address="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">X</button>`
-        : ""}
+      <div class="saved-address-actions">
+        <a class="secondary-button compact-button map-link" href="${escapeHtml(mapsUrl(item.address))}" target="_blank" rel="noopener">Maps</a>
+        ${item.created_by === state.session.user.id
+          ? `<button type="button" class="delete-place-button" data-delete-address="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">X</button>`
+          : ""}
+      </div>
     </div>
   `).join("");
 }
@@ -1117,6 +1132,17 @@ function wireEvents() {
   el.addHangoutButton.addEventListener("click", openHangoutComposer);
   el.closeHangoutButton.addEventListener("click", closeHangoutComposer);
   el.hangoutForm.addEventListener("submit", saveHangout);
+  el.hangoutAddressInput.addEventListener("input", () => renderAddressSuggestions(el.hangoutAddressInput.value));
+  el.hangoutAddressInput.addEventListener("focus", () => renderAddressSuggestions(el.hangoutAddressInput.value));
+  el.hangoutAddressSuggestions.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-select-address]");
+    if (!option) return;
+    el.hangoutAddressInput.value = option.dataset.selectAddress;
+    el.hangoutAddressSuggestions.classList.add("hidden");
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".address-autocomplete")) el.hangoutAddressSuggestions.classList.add("hidden");
+  });
   el.savedAddressForm.addEventListener("submit", saveSavedAddress);
   el.savedAddressList.addEventListener("click", (event) => {
     const useButton = event.target.closest("[data-use-address]");
