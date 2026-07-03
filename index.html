@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rank Circle</title>
+    <script>
+      document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
+    </script>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
@@ -39,7 +42,13 @@
             <p class="eyebrow">Your circle</p>
             <h1 id="groupTitle">Rank Circle</h1>
           </div>
-          <button id="signOutButton" class="icon-button" type="button" aria-label="Sign out">X</button>
+          <div class="topbar-actions">
+            <label class="theme-toggle" title="Dark mode">
+              <input id="themeToggle" type="checkbox" role="switch" aria-label="Dark mode" />
+              <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+            </label>
+            <button id="signOutButton" class="icon-button" type="button" aria-label="Sign out" title="Sign out">X</button>
+          </div>
         </header>
 
         <nav class="app-nav" aria-label="Main views">
@@ -100,8 +109,11 @@
           <form id="profileForm" class="profile-form">
             <div class="avatar-preview" id="avatarPreview">?</div>
             <label>Nickname<input id="nicknameInput" type="text" maxlength="32" placeholder="Your nickname" required /></label>
-            <label>Profile picture URL<input id="avatarUrlInput" type="url" placeholder="https://..." /></label>
-            <button class="primary-button" type="submit">Save profile</button>
+            <label>Profile picture
+              <input id="avatarFileInput" class="file-input" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" />
+              <span class="field-hint">PNG or JPEG, up to 5 MB</span>
+            </label>
+            <button id="saveProfileButton" class="primary-button" type="submit">Save profile</button>
           </form>
         </section>
       </section>
