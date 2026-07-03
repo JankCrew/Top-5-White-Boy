@@ -314,8 +314,8 @@ function renderPersonalRanking() {
           <div class="score">${member.id === state.session.user.id ? "You" : "Friend"}</div>
         </div>
         <div class="reorder-actions">
-          <button type="button" aria-label="Move up" data-move="up" data-user-id="${member.id}">Up</button>
-          <button type="button" aria-label="Move down" data-move="down" data-user-id="${member.id}">Down</button>
+          <button type="button" aria-label="Move up" data-move="up" data-user-id="${member.id}">&#8593;</button>
+          <button type="button" aria-label="Move down" data-move="down" data-user-id="${member.id}">&#8595;</button>
         </div>
       </article>
     `;
