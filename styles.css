@@ -16,6 +16,9 @@
   --card-bg: #ffffff;
   --nav-bg: #ffffff;
   --tab-bg: #eef1f2;
+  --selected-bg: #1f2528;
+  --selected-text: #ffffff;
+  --selected-muted: rgba(255, 255, 255, 0.72);
 }
 
 :root[data-theme="dark"] {
@@ -36,6 +39,9 @@
   --card-bg: #202529;
   --nav-bg: #191d20;
   --tab-bg: #282e32;
+  --selected-bg: #f2f4f5;
+  --selected-text: #111416;
+  --selected-muted: rgba(17, 20, 22, 0.68);
 }
 
 * { box-sizing: border-box; }
@@ -149,7 +155,7 @@ input:focus {
 }
 
 .tab { background: var(--tab-bg); color: var(--muted); }
-.tab.active { background: var(--ink); color: #fff; }
+.tab.active { background: var(--selected-bg); color: var(--selected-text); }
 
 .topbar {
   display: flex;
@@ -245,7 +251,14 @@ input:focus {
 .reorder-actions { display: flex; gap: 6px; }
 .reorder-actions button {
   width: 34px;
+  height: 34px;
   min-height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-size: 1.15rem;
+  line-height: 1;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--card-bg);
@@ -264,9 +277,9 @@ input:focus {
 
 .group-code {
   align-items: center;
-  background: var(--ink);
+  background: var(--selected-bg);
   border-radius: 8px;
-  color: #fff;
+  color: var(--selected-text);
   display: flex;
   justify-content: space-between;
   gap: 14px;
@@ -274,7 +287,7 @@ input:focus {
   padding: 14px;
 }
 
-.group-code span { color: rgba(255, 255, 255, 0.72); font-size: 0.83rem; font-weight: 800; }
+.group-code span { color: var(--selected-muted); font-size: 0.83rem; font-weight: 800; }
 .group-code strong { font-size: 1.15rem; letter-spacing: 0; }
 .member-grid { display: grid; gap: 10px; }
 .member-card { grid-template-columns: auto 1fr; }
@@ -325,7 +338,7 @@ button:disabled { cursor: wait; opacity: 0.65; }
 }
 
 .nav-item { background: transparent; color: var(--muted); font-size: 0.86rem; }
-.nav-item.active { background: var(--ink); color: #fff; }
+.nav-item.active { background: var(--selected-bg); color: var(--selected-text); }
 
 .toast {
   position: fixed;
@@ -334,8 +347,8 @@ button:disabled { cursor: wait; opacity: 0.65; }
   bottom: 86px;
   max-width: 520px;
   margin: 0 auto;
-  background: var(--ink);
-  color: #fff;
+  background: var(--selected-bg);
+  color: var(--selected-text);
   border-radius: 8px;
   padding: 13px 16px;
   box-shadow: var(--shadow);
