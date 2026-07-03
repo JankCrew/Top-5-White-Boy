@@ -547,9 +547,14 @@ function planMarkup(plan, includeActions = true) {
     <div class="plan-actions">
       <button class="secondary-button compact-button" type="button" data-plan-status="active" data-plan-id="${plan.id}">Activate</button>
       <button class="secondary-button compact-button" type="button" data-plan-status="scheduled" data-plan-id="${plan.id}">Schedule</button>
+      <button class="secondary-button compact-button" type="button" data-plan-status="ended" data-plan-id="${plan.id}">End</button>
       ${canDelete ? `<button class="danger-button compact-button" type="button" data-delete-plan="${plan.id}">Delete</button>` : ""}
     </div>
-  ` : "";
+  ` : `
+    <div class="plan-actions">
+      <button class="danger-button compact-button" type="button" data-plan-status="ended" data-plan-id="${plan.id}">End</button>
+    </div>
+  `;
 
   return `
     <details class="plan-entry">
@@ -563,14 +568,14 @@ function planMarkup(plan, includeActions = true) {
       </summary>
       <div class="plan-details">
         <div><strong>Proposed by</strong><span>${escapeHtml(plan.author?.nickname || "Group member")}</span></div>
-        <div>
+        ${plan.address ? `<div>
           <strong>Address</strong>
           <span>${escapeHtml(plan.address)}</span>
           <div class="address-actions">
             <button type="button" class="secondary-button compact-button" data-copy-address="${escapeHtml(plan.address)}">Copy</button>
             <a class="secondary-button compact-button map-link" href="${escapeHtml(mapsUrl(plan.address))}" target="_blank" rel="noopener">Maps</a>
           </div>
-        </div>
+        </div>` : ""}
         ${plan.context ? `<div><strong>Context</strong><p>${escapeHtml(plan.context)}</p></div>` : ""}
         ${actions}
       </div>
@@ -586,9 +591,12 @@ function renderHangoutPlans() {
   }
 
   const now = Date.now();
-  const visible = state.hangoutPlans.filter((plan) =>
-    plan.status === "active" || (plan.status === "scheduled" && new Date(plan.starts_at).getTime() >= now)
-  );
+  const visible = state.hangoutPlans.filter((plan) => {
+    const startsAt = new Date(plan.starts_at).getTime();
+    const activeUntil = startsAt + 24 * 60 * 60 * 1000;
+    return (plan.status === "active" && activeUntil > now)
+      || (plan.status === "scheduled" && startsAt >= now);
+  });
   el.homePlansSection.classList.toggle("hidden", !visible.length);
   el.homePlansList.innerHTML = visible.map((plan) => planMarkup(plan, false)).join("");
 }
@@ -629,7 +637,7 @@ async function saveHangout(event) {
     author_id: state.session.user.id,
     title: el.hangoutTitleInput.value.trim(),
     starts_at: new Date(el.hangoutDateTimeInput.value).toISOString(),
-    address: el.hangoutAddressInput.value.trim(),
+    address: el.hangoutAddressInput.value.trim() || null,
     context: el.hangoutContextInput.value.trim() || null,
     status: "proposed"
   });
@@ -655,7 +663,7 @@ async function updatePlanStatus(planId, status) {
     showToast(error.message);
     return;
   }
-  showToast(status === "active" ? "Plan is active" : "Plan scheduled");
+  showToast(status === "active" ? "Plan is active" : status === "scheduled" ? "Plan scheduled" : "Hangout ended");
   await loadHangoutPlans();
 }
 
