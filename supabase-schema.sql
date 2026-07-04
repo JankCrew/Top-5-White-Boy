@@ -14,8 +14,14 @@ create table if not exists public.groups (
   name text not null,
   invite_code text not null unique,
   created_by uuid not null references public.profiles(id) on delete cascade,
+  enabled_features text[] not null default array['quotes','hangouts','ideas']::text[]
+    check (enabled_features <@ array['quotes','hangouts','ideas']::text[]),
   created_at timestamptz not null default now()
 );
+
+alter table public.groups
+add column if not exists enabled_features text[] not null
+default array['quotes','hangouts','ideas']::text[];
 
 create table if not exists public.group_members (
   group_id uuid not null references public.groups(id) on delete cascade,
@@ -324,3 +330,83 @@ with check (created_by = (select auth.uid()) and exists (select 1 from public.gr
 drop policy if exists "creators can delete saved addresses" on public.group_addresses;
 create policy "creators can delete saved addresses" on public.group_addresses for delete to authenticated
 using (created_by = (select auth.uid()));
+
+
+-- Group owner management
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_group_owner(target_group_id uuid)
+returns boolean language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from public.groups g
+    where g.id = target_group_id and g.created_by = (select auth.uid())
+  );
+$$;
+revoke all on function private.is_group_owner(uuid) from public;
+grant execute on function private.is_group_owner(uuid) to authenticated;
+
+grant update on public.groups to authenticated;
+drop policy if exists "owners can update group settings" on public.groups;
+create policy "owners can update group settings"
+on public.groups for update to authenticated
+using (private.is_group_owner(id))
+with check (private.is_group_owner(id));
+
+drop policy if exists "users can leave groups themselves" on public.group_members;
+drop policy if exists "members can leave and owners can remove members" on public.group_members;
+create policy "members can leave and owners can remove members"
+on public.group_members for delete to authenticated
+using (
+  (user_id = (select auth.uid()) and not private.is_group_owner(group_id))
+  or (private.is_group_owner(group_id) and user_id <> (select auth.uid()))
+);
+
+grant delete on public.rankings to authenticated;
+drop policy if exists "owners can delete removed member rankings" on public.rankings;
+create policy "owners can delete removed member rankings"
+on public.rankings for delete to authenticated
+using (private.is_group_owner(group_id));
+
+create or replace function private.cleanup_removed_group_member()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  delete from public.rankings
+  where group_id = old.group_id
+    and (ranker_id = old.user_id or ranked_user_id = old.user_id);
+  return old;
+end;
+$$;
+revoke all on function private.cleanup_removed_group_member() from public;
+drop trigger if exists cleanup_removed_group_member_rankings on public.group_members;
+create trigger cleanup_removed_group_member_rankings
+after delete on public.group_members
+for each row execute function private.cleanup_removed_group_member();
+
+grant delete on public.quotes, public.ideas, public.hangout_plans, public.group_addresses to authenticated;
+
+drop policy if exists "authors and owners can delete quotes" on public.quotes;
+create policy "authors and owners can delete quotes"
+on public.quotes for delete to authenticated
+using (author_id = (select auth.uid()) or private.is_group_owner(group_id));
+
+drop policy if exists "authors and owners can delete ideas" on public.ideas;
+create policy "authors and owners can delete ideas"
+on public.ideas for delete to authenticated
+using (author_id = (select auth.uid()) or private.is_group_owner(group_id));
+
+drop policy if exists "creators can delete their hangout plans" on public.hangout_plans;
+drop policy if exists "authors and owners can delete hangout plans" on public.hangout_plans;
+create policy "authors and owners can delete hangout plans"
+on public.hangout_plans for delete to authenticated
+using (author_id = (select auth.uid()) or private.is_group_owner(group_id));
+
+drop policy if exists "creators can delete saved addresses" on public.group_addresses;
+drop policy if exists "creators and owners can delete saved addresses" on public.group_addresses;
+create policy "creators and owners can delete saved addresses"
+on public.group_addresses for delete to authenticated
+using (created_by = (select auth.uid()) or private.is_group_owner(group_id));
+
