@@ -8,6 +8,7 @@
   --primary: #0f766e;
   --primary-dark: #0b5f59;
   --accent: #d94f30;
+  --danger: #c74736;
   --soft: #e8f3f1;
   --shadow: 0 18px 48px rgba(31, 37, 40, 0.12);
   --panel-rgb: 255, 255, 255;
@@ -31,6 +32,7 @@
   --primary: #36b9aa;
   --primary-dark: #8edbd2;
   --accent: #ff8062;
+  --danger: #ff8062;
   --soft: #203b38;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
   --panel-rgb: 25, 29, 32;
@@ -370,7 +372,7 @@ input:focus, textarea:focus {
 .group-code span { color: var(--selected-muted); font-size: 0.83rem; font-weight: 800; }
 .group-code strong { font-size: 1.15rem; letter-spacing: 0; }
 .member-grid { display: grid; gap: 10px; }
-.member-card { grid-template-columns: auto 1fr; }
+.member-card { position: relative; grid-template-columns: auto 1fr auto; }
 .profile-form { max-width: 520px; }
 
 .settings-section {
@@ -392,6 +394,50 @@ input:focus, textarea:focus {
 .settings-invite-code { font-size: 1.05rem; }
 .compact-button { min-height: 38px; padding: 0 12px; }
 .settings-members { margin: 4px 0 22px; }
+.owner-management {
+  margin: 4px 0 22px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-bg);
+}
+.owner-heading { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.owner-heading .muted { margin: 4px 0 0; font-size: 0.86rem; }
+.owner-badge {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--selected-bg);
+  color: var(--selected-text);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+.feature-settings { display: grid; gap: 10px; margin-top: 16px; }
+.feature-settings label {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.feature-settings input { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.feature-settings .secondary-button { justify-self: start; }
+.member-remove-button, .content-delete-button { flex: 0 0 auto; }
+.member-remove-button {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--danger);
+  font-weight: 900;
+}
+.content-delete-button { margin-top: 10px; }
 
 .feature-grid {
   display: grid;
@@ -740,3 +786,4 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .quote-form { border-radius: 8px; }
   .quote-composer { align-items: center; }
 }
+
