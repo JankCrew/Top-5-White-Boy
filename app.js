@@ -2,6 +2,11 @@ const CONFIG_KEY = "rank-circle-supabase-config";
 const THEME_KEY = "rank-circle-theme";
 const AVATAR_BUCKET = "avatars";
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const RANKING_SAVE_DELAY = 400;
+
+let rankingSaveTimer = null;
+let rankingSaveInFlight = false;
+let rankingSavePending = false;
 
 const state = {
   client: null,
@@ -49,7 +54,7 @@ const el = {
   homePlansList: document.querySelector("#homePlansList"),
   overallList: document.querySelector("#overallList"),
   personalRankingList: document.querySelector("#personalRankingList"),
-  saveRankingButton: document.querySelector("#saveRankingButton"),
+  rankingSaveStatus: document.querySelector("#rankingSaveStatus"),
   featuresHub: document.querySelector("#featuresHub"),
   quoteBook: document.querySelector("#quoteBook"),
   quoteList: document.querySelector("#quoteList"),
@@ -1208,14 +1213,18 @@ function moveRanking(userId, direction) {
   [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
   state.personalOrder = nextOrder;
   renderPersonalRanking();
+  scheduleRankingSave();
 }
 
 async function saveRanking() {
-  if (!state.group) {
-    showToast("Join a group first");
+  if (!state.group) return;
+  if (rankingSaveInFlight) {
+    rankingSavePending = true;
     return;
   }
 
+  rankingSaveInFlight = true;
+  el.rankingSaveStatus.textContent = "Saving...";
   const rows = state.personalOrder
     .filter((rankedUserId) => rankedUserId !== state.session.user.id)
     .map((rankedUserId, index) => ({
@@ -1230,13 +1239,26 @@ async function saveRanking() {
     .upsert(rows, { onConflict: "group_id,ranker_id,ranked_user_id" });
 
   if (error) {
+    rankingSaveInFlight = false;
+    el.rankingSaveStatus.textContent = "Could not save";
     showToast(error.message);
     return;
   }
 
   state.rankingPreviews.delete(state.session.user.id);
-  showToast("Ranking saved");
+  el.rankingSaveStatus.textContent = "Saved";
   await renderOverallRanking();
+  rankingSaveInFlight = false;
+  if (rankingSavePending) {
+    rankingSavePending = false;
+    await saveRanking();
+  }
+}
+
+function scheduleRankingSave() {
+  clearTimeout(rankingSaveTimer);
+  el.rankingSaveStatus.textContent = "Saving...";
+  rankingSaveTimer = setTimeout(saveRanking, RANKING_SAVE_DELAY);
 }
 
 function switchView(viewId) {
@@ -1295,7 +1317,6 @@ function wireEvents() {
   el.profileForm.addEventListener("submit", saveProfile);
   el.createGroupForm.addEventListener("submit", createGroup);
   el.joinGroupForm.addEventListener("submit", joinGroup);
-  el.saveRankingButton.addEventListener("click", saveRanking);
   el.quoteBackButton.addEventListener("click", showFeaturesHub);
   el.hangoutBackButton.addEventListener("click", showFeaturesHub);
   el.addHangoutButton.addEventListener("click", openHangoutComposer);
@@ -1382,6 +1403,7 @@ function wireEvents() {
     nextOrder.splice(targetIndex, 0, draggedId);
     state.personalOrder = nextOrder;
     renderPersonalRanking();
+    scheduleRankingSave();
   });
 }
 
