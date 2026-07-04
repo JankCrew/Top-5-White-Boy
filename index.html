@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260703-26" />
+    <link rel="stylesheet" href="styles.css?v=20260703-27" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -94,16 +94,16 @@
               </div>
             </div>
             <div class="feature-grid">
-              <button class="feature-tile quote-tile" type="button" data-feature="quotes">
+              <button class="feature-tile quote-tile" type="button" data-feature="quotes" data-feature-tile="quotes">
                 <span class="feature-icon" aria-hidden="true">&ldquo;</span>
                 <strong>Quote Book</strong>
               </button>
-              <button class="feature-tile" type="button" data-feature="hangouts">
+              <button class="feature-tile" type="button" data-feature="hangouts" data-feature-tile="hangouts">
                 <span class="feature-icon" aria-hidden="true">&#128197;</span>
                 <strong>Hangout Plans</strong>
                 <span>Coming soon</span>
               </button>
-              <button class="feature-tile" type="button" data-feature="ideas">
+              <button class="feature-tile" type="button" data-feature="ideas" data-feature-tile="ideas">
                 <span class="feature-icon" aria-hidden="true">&#9733;</span>
                 <strong id="ideasFeatureTitle">Group Ideas</strong>
               </button>
@@ -272,7 +272,22 @@
               </div>
             </div>
             <div id="memberList" class="member-grid settings-members"></div>
-            <div class="settings-section">
+            <section id="ownerManagement" class="owner-management hidden">
+              <div class="owner-heading">
+                <div>
+                  <strong>Owner controls</strong>
+                  <p class="muted">Choose group features and manage members.</p>
+                </div>
+                <span class="owner-badge">Owner</span>
+              </div>
+              <form id="featureSettingsForm" class="feature-settings">
+                <label><input type="checkbox" name="enabledFeature" value="quotes" /> Quote Book</label>
+                <label><input type="checkbox" name="enabledFeature" value="hangouts" /> Hangout Plans</label>
+                <label><input type="checkbox" name="enabledFeature" value="ideas" /> Group Ideas</label>
+                <button id="saveFeatureSettingsButton" class="secondary-button compact-button" type="submit">Save features</button>
+              </form>
+            </section>
+            <div id="leaveGroupSection" class="settings-section">
               <div>
                 <strong>Leave group</strong>
                 <p class="muted">Your saved rankings will remain if you rejoin later.</p>
@@ -303,6 +318,7 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260703-26"></script>
+    <script src="app.js?v=20260703-27"></script>
   </body>
 </html>
+
