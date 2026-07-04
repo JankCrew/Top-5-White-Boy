@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260703-27" />
+    <link rel="stylesheet" href="styles.css?v=20260703-28" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -78,9 +78,9 @@
           <div class="section-heading">
             <div>
               <h2>My ranking</h2>
-              <p class="muted">Use the arrows or drag people into your preferred order, then save.</p>
+              <p class="muted">Use the arrows or drag people into your preferred order. Changes save automatically.</p>
             </div>
-            <button id="saveRankingButton" class="primary-button compact" type="button">Save</button>
+            <span id="rankingSaveStatus" class="save-status" role="status">Saved</span>
           </div>
           <div id="personalRankingList" class="rank-list empty-state">No group members yet.</div>
         </section>
@@ -318,7 +318,7 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260703-27"></script>
+    <script src="app.js?v=20260703-28"></script>
   </body>
 </html>
 
