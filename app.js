@@ -265,8 +265,13 @@ async function loadAppData() {
       .eq("ranker_id", state.session.user.id)
       .order("position", { ascending: true });
 
-    const rankedIds = (ranking || []).map((item) => item.ranked_user_id);
-    const missingIds = state.members.map((member) => member.id).filter((id) => !rankedIds.includes(id));
+    const ownUserId = state.session.user.id;
+    const rankedIds = (ranking || [])
+      .map((item) => item.ranked_user_id)
+      .filter((id) => id !== ownUserId);
+    const missingIds = state.members
+      .map((member) => member.id)
+      .filter((id) => id !== ownUserId && !rankedIds.includes(id));
     state.personalOrder = [...rankedIds, ...missingIds];
   }
 
@@ -1117,12 +1122,14 @@ async function saveRanking() {
     return;
   }
 
-  const rows = state.personalOrder.map((rankedUserId, index) => ({
+  const rows = state.personalOrder
+    .filter((rankedUserId) => rankedUserId !== state.session.user.id)
+    .map((rankedUserId, index) => ({
     group_id: state.group.id,
     ranker_id: state.session.user.id,
     ranked_user_id: rankedUserId,
-    position: index + 1
-  }));
+      position: index + 1
+    }));
 
   const { error } = await state.client
     .from("rankings")
