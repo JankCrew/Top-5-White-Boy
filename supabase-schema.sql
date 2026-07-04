@@ -29,6 +29,7 @@ create table if not exists public.rankings (
   ranker_id uuid not null references public.profiles(id) on delete cascade,
   ranked_user_id uuid not null references public.profiles(id) on delete cascade,
   position integer not null check (position > 0),
+  check (ranker_id <> ranked_user_id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (group_id, ranker_id, ranked_user_id)
