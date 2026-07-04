@@ -100,7 +100,11 @@ const el = {
   groupSettings: document.querySelector("#groupSettings"),
   copyInviteButton: document.querySelector("#copyInviteButton"),
   leaveGroupButton: document.querySelector("#leaveGroupButton"),
+  leaveGroupSection: document.querySelector("#leaveGroupSection"),
   memberList: document.querySelector("#memberList"),
+  ownerManagement: document.querySelector("#ownerManagement"),
+  featureSettingsForm: document.querySelector("#featureSettingsForm"),
+  saveFeatureSettingsButton: document.querySelector("#saveFeatureSettingsButton"),
   profileForm: document.querySelector("#profileForm"),
   nicknameInput: document.querySelector("#nicknameInput"),
   avatarFileInput: document.querySelector("#avatarFileInput"),
@@ -155,6 +159,14 @@ function escapeHtml(value) {
     "'": "&#39;",
     '"': "&quot;"
   })[char]);
+}
+
+function isGroupOwner() {
+  return Boolean(state.group && state.group.created_by === state.session?.user?.id);
+}
+
+function enabledFeatures() {
+  return state.group?.enabled_features || ["quotes", "hangouts", "ideas"];
 }
 
 function avatarMarkup(person, className = "avatar") {
@@ -284,6 +296,14 @@ function render() {
   el.groupTitle.textContent = state.group?.name || "Rank Circle";
   el.currentInviteCode.textContent = state.group?.invite_code || "None yet";
   el.groupSettings.classList.toggle("hidden", !state.group);
+  el.ownerManagement.classList.toggle("hidden", !isGroupOwner());
+  el.leaveGroupSection.classList.toggle("hidden", isGroupOwner());
+  document.querySelectorAll("[data-feature-tile]").forEach((tile) => {
+    tile.classList.toggle("hidden", !enabledFeatures().includes(tile.dataset.featureTile));
+  });
+  el.featureSettingsForm.querySelectorAll("[name='enabledFeature']").forEach((input) => {
+    input.checked = enabledFeatures().includes(input.value);
+  });
   el.ideasFeatureTitle.textContent = `${state.group?.name || "Group"} Ideas`;
   el.ideaBookTitle.textContent = `${state.group?.name || "Group"} Ideas`;
   updateNavigation();
@@ -300,7 +320,7 @@ function updateNavigation() {
   const hasGroup = Boolean(state.group);
   el.homeNavItem.classList.toggle("hidden", !hasGroup);
   el.rankingNavItem.classList.toggle("hidden", !hasGroup);
-  el.featuresNavItem.classList.toggle("hidden", !hasGroup);
+  el.featuresNavItem.classList.toggle("hidden", !hasGroup || !enabledFeatures().length);
   el.groupNavItem.classList.toggle("hidden", hasGroup);
 
   const activeView = document.querySelector(".view.active")?.id;
@@ -372,10 +392,52 @@ function renderMembers() {
       ${avatarMarkup(member)}
       <div>
         <div class="person-name">${escapeHtml(member.nickname)}</div>
-        <div class="score">${member.id === state.session.user.id ? "You" : "Member"}</div>
+        <div class="score">${member.id === state.group?.created_by ? "Owner" : member.id === state.session.user.id ? "You" : "Member"}</div>
       </div>
+      ${isGroupOwner() && member.id !== state.session.user.id
+        ? `<button class="member-remove-button" type="button" data-remove-member="${member.id}" aria-label="Remove ${escapeHtml(member.nickname)}" title="Remove member">X</button>`
+        : ""}
     </article>
   `).join("");
+}
+
+async function saveFeatureSettings(event) {
+  event.preventDefault();
+  if (!isGroupOwner()) return;
+  const enabled = [...el.featureSettingsForm.querySelectorAll("[name='enabledFeature']:checked")]
+    .map((input) => input.value);
+  el.saveFeatureSettingsButton.disabled = true;
+  const { data, error } = await state.client
+    .from("groups")
+    .update({ enabled_features: enabled })
+    .eq("id", state.group.id)
+    .select()
+    .single();
+  el.saveFeatureSettingsButton.disabled = false;
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  state.group = data;
+  render();
+  showFeaturesHub();
+  showToast("Group features updated");
+}
+
+async function removeMember(userId) {
+  const member = state.members.find((item) => item.id === userId);
+  if (!isGroupOwner() || !member || !window.confirm(`Remove ${member.nickname} from the group?`)) return;
+  const { error } = await state.client
+    .from("group_members")
+    .delete()
+    .eq("group_id", state.group.id)
+    .eq("user_id", userId);
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  showToast(`${member.nickname} was removed`);
+  await loadAppData();
 }
 
 function renderPersonalRanking() {
@@ -611,7 +673,7 @@ function mapsUrl(address) {
 }
 
 function planMarkup(plan, includeActions = true) {
-  const canDelete = plan.author_id === state.session.user.id;
+  const canDelete = plan.author_id === state.session.user.id || isGroupOwner();
   const actions = includeActions ? `
     <div class="plan-actions">
       <button class="secondary-button compact-button" type="button" data-plan-status="active" data-plan-id="${plan.id}">Activate</button>
@@ -692,7 +754,7 @@ function renderSavedAddresses() {
       </button>
       <div class="saved-address-actions">
         <a class="secondary-button compact-button map-link" href="${escapeHtml(mapsUrl(item.address))}" target="_blank" rel="noopener">Maps</a>
-        ${item.created_by === state.session.user.id
+        ${item.created_by === state.session.user.id || isGroupOwner()
           ? `<button type="button" class="delete-place-button" data-delete-address="${item.id}" aria-label="Delete ${escapeHtml(item.name)}">X</button>`
           : ""}
       </div>
@@ -879,15 +941,29 @@ function renderQuotes() {
         <div><strong>Date</strong><span>${escapeHtml(formatQuoteDate(item.quote_date))}</span></div>
         <div><strong>Added by</strong><span>${escapeHtml(item.profiles?.nickname || "Group member")}</span></div>
         ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
+        ${item.author_id === state.session.user.id || isGroupOwner()
+          ? `<button class="danger-button compact-button content-delete-button" type="button" data-delete-quote="${item.id}">Delete</button>`
+          : ""}
       </div>
     </details>
   `).join("");
 }
 
+async function deleteQuote(quoteId) {
+  if (!window.confirm("Delete this quote?")) return;
+  const { error } = await state.client.from("quotes").delete().eq("id", quoteId);
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  showToast("Quote deleted");
+  await loadQuotes();
+}
+
 async function loadQuotes() {
   const { data, error } = await state.client
     .from("quotes")
-    .select("id, quote, quote_date, context, created_at, profiles(nickname)")
+    .select("id, author_id, quote, quote_date, context, created_at, profiles(nickname)")
     .eq("group_id", state.group.id)
     .order("quote_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -902,6 +978,10 @@ async function loadQuotes() {
 }
 
 async function openFeature(feature) {
+  if (!enabledFeatures().includes(feature)) {
+    showFeaturesHub();
+    return;
+  }
   el.featuresHub.classList.add("hidden");
   if (feature === "hangouts") {
     el.hangoutBook.classList.remove("hidden");
@@ -984,6 +1064,9 @@ function renderIdeas() {
           <div class="quote-details">
             <div><strong>Added by</strong><span>${escapeHtml(item.author?.nickname || "Group member")}</span></div>
             ${item.context ? `<div class="quote-context"><strong>Context</strong><p>${escapeHtml(item.context)}</p></div>` : ""}
+            ${item.author_id === state.session.user.id || isGroupOwner()
+              ? `<button class="danger-button compact-button content-delete-button" type="button" data-delete-idea="${item.id}">Delete</button>`
+              : ""}
           </div>
         </details>
         <div class="vote-row">
@@ -996,10 +1079,21 @@ function renderIdeas() {
   }).join("");
 }
 
+async function deleteIdea(ideaId) {
+  if (!window.confirm("Delete this idea and its votes?")) return;
+  const { error } = await state.client.from("ideas").delete().eq("id", ideaId);
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+  showToast("Idea deleted");
+  await loadIdeas();
+}
+
 async function loadIdeas() {
   const { data, error } = await state.client
     .from("ideas")
-    .select("id, idea, context, created_at, author:profiles!ideas_author_id_fkey(nickname), idea_votes(voter_id, value)")
+    .select("id, author_id, idea, context, created_at, author:profiles!ideas_author_id_fkey(nickname), idea_votes(voter_id, value)")
     .eq("group_id", state.group.id)
     .order("created_at", { ascending: false });
 
@@ -1186,6 +1280,11 @@ function wireEvents() {
   el.settingsButton.addEventListener("click", () => switchView("profileView"));
   el.copyInviteButton.addEventListener("click", copyInviteCode);
   el.leaveGroupButton.addEventListener("click", leaveGroup);
+  el.featureSettingsForm.addEventListener("submit", saveFeatureSettings);
+  el.memberList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-member]");
+    if (button) removeMember(button.dataset.removeMember);
+  });
   el.themeToggle.addEventListener("change", () => setTheme(el.themeToggle.checked ? "dark" : "light"));
   el.refreshButton.addEventListener("click", loadAppData);
   el.overallList.addEventListener("click", (event) => {
@@ -1235,6 +1334,11 @@ function wireEvents() {
   el.closeIdeaButton.addEventListener("click", closeIdeaComposer);
   el.ideaForm.addEventListener("submit", saveIdea);
   el.ideaList.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-delete-idea]");
+    if (deleteButton) {
+      deleteIdea(deleteButton.dataset.deleteIdea);
+      return;
+    }
     const button = event.target.closest("[data-vote]");
     if (!button) return;
     voteOnIdea(button.dataset.ideaId, Number(button.dataset.vote));
@@ -1242,6 +1346,10 @@ function wireEvents() {
   el.addQuoteButton.addEventListener("click", openQuoteComposer);
   el.closeQuoteButton.addEventListener("click", closeQuoteComposer);
   el.quoteForm.addEventListener("submit", saveQuote);
+  el.quoteList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-quote]");
+    if (button) deleteQuote(button.dataset.deleteQuote);
+  });
   document.querySelectorAll("[data-feature]").forEach((button) => {
     button.addEventListener("click", () => openFeature(button.dataset.feature));
   });
@@ -1282,3 +1390,4 @@ bootstrap().catch((error) => {
   console.error(error);
   showToast(error.message || "Something went wrong");
 });
+
