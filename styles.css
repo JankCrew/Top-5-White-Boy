@@ -331,6 +331,12 @@ input:focus, textarea:focus {
 .drag-handle { color: var(--muted); font-weight: 900; }
 
 .reorder-actions { display: flex; gap: 6px; }
+.save-status {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
 .reorder-actions button {
   width: 34px;
   height: 34px;
