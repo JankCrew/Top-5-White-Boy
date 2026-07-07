@@ -34,21 +34,30 @@ create table if not exists public.rankings (
   group_id uuid not null references public.groups(id) on delete cascade,
   ranker_id uuid not null references public.profiles(id) on delete cascade,
   ranked_user_id uuid not null references public.profiles(id) on delete cascade,
-  position integer not null check (position > 0),
+  position integer check (position > 0),
+  score integer not null default 0,
   check (ranker_id <> ranked_user_id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (group_id, ranker_id, ranked_user_id)
 );
 
-create or replace view public.group_rankings
+alter table public.rankings
+add column if not exists score integer not null default 0;
+
+alter table public.rankings
+alter column position drop not null;
+
+drop view if exists public.group_rankings;
+
+create view public.group_rankings
 with (security_invoker = true) as
 select
   r.group_id,
   p.id,
   p.nickname,
   p.avatar_url,
-  avg(r.position)::numeric(10, 2) as average_position,
+  avg(r.score)::numeric(10, 2) as average_score,
   count(*)::integer as vote_count
 from public.rankings r
 join public.profiles p on p.id = r.ranked_user_id
@@ -409,4 +418,3 @@ drop policy if exists "creators and owners can delete saved addresses" on public
 create policy "creators and owners can delete saved addresses"
 on public.group_addresses for delete to authenticated
 using (created_by = (select auth.uid()) or private.is_group_owner(group_id));
-
