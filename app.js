@@ -16,7 +16,7 @@ const state = {
   membership: null,
   group: null,
   members: [],
-  personalOrder: [],
+  personalScores: new Map(),
   rankingPreviews: new Map(),
   quotes: [],
   ideas: [],
@@ -262,7 +262,7 @@ async function loadAppData() {
   state.membership = membership;
   state.group = membership?.groups || null;
   state.members = [];
-  state.personalOrder = [];
+  state.personalScores = new Map();
   state.rankingPreviews.clear();
 
   if (state.group) {
@@ -277,19 +277,17 @@ async function loadAppData() {
 
     const { data: ranking } = await state.client
       .from("rankings")
-      .select("ranked_user_id, position")
+      .select("ranked_user_id, score")
       .eq("group_id", state.group.id)
-      .eq("ranker_id", state.session.user.id)
-      .order("position", { ascending: true });
+      .eq("ranker_id", state.session.user.id);
 
     const ownUserId = state.session.user.id;
-    const rankedIds = (ranking || [])
-      .map((item) => item.ranked_user_id)
-      .filter((id) => id !== ownUserId);
-    const missingIds = state.members
-      .map((member) => member.id)
-      .filter((id) => id !== ownUserId && !rankedIds.includes(id));
-    state.personalOrder = [...rankedIds, ...missingIds];
+    state.members
+      .filter((member) => member.id !== ownUserId)
+      .forEach((member) => state.personalScores.set(member.id, 0));
+    (ranking || [])
+      .filter((item) => item.ranked_user_id !== ownUserId)
+      .forEach((item) => state.personalScores.set(item.ranked_user_id, Number(item.score || 0)));
   }
 
   render();
@@ -448,26 +446,31 @@ async function removeMember(userId) {
 function renderPersonalRanking() {
   if (!state.group || !state.members.length) {
     el.personalRankingList.className = "rank-list empty-state";
-    el.personalRankingList.textContent = "Join a group before making a ranking.";
+    el.personalRankingList.textContent = "Join a group before scoring people.";
     return;
   }
 
   el.personalRankingList.className = "rank-list";
-  const memberById = new Map(state.members.map((member) => [member.id, member]));
-  el.personalRankingList.innerHTML = state.personalOrder.map((id, index) => {
-    const member = memberById.get(id);
-    if (!member) return "";
+  const voters = state.members.filter((member) => member.id !== state.session.user.id);
+  if (!voters.length) {
+    el.personalRankingList.className = "rank-list empty-state";
+    el.personalRankingList.textContent = "You need at least one other group member to score.";
+    return;
+  }
+
+  el.personalRankingList.innerHTML = voters.map((member) => {
+    const score = state.personalScores.get(member.id) || 0;
     return `
-      <article class="rank-card drag-card" draggable="true" data-user-id="${member.id}">
-        <span class="drag-handle">::</span>
-        <span class="rank-number">${index + 1}</span>
+      <article class="rank-card score-card" data-user-id="${member.id}">
+        ${avatarMarkup(member)}
         <div>
           <div class="person-name">${escapeHtml(member.nickname)}</div>
-          <div class="score">${member.id === state.session.user.id ? "You" : "Friend"}</div>
+          <div class="score">${score === 1 ? "1 point" : `${score} points`}</div>
         </div>
-        <div class="reorder-actions">
-          <button type="button" aria-label="Move up" data-move="up" data-user-id="${member.id}">&#8593;</button>
-          <button type="button" aria-label="Move down" data-move="down" data-user-id="${member.id}">&#8595;</button>
+        <div class="score-actions">
+          <button type="button" aria-label="Downvote ${escapeHtml(member.nickname)}" data-score-delta="-1" data-user-id="${member.id}">&#8595;</button>
+          <strong class="point-count" aria-label="Current points">${score}</strong>
+          <button type="button" aria-label="Upvote ${escapeHtml(member.nickname)}" data-score-delta="1" data-user-id="${member.id}">&#8593;</button>
         </div>
       </article>
     `;
@@ -477,8 +480,8 @@ function renderPersonalRanking() {
 async function renderOverallRanking() {
   if (!state.group) {
     el.overallList.className = "rank-list empty-state";
-    el.overallList.textContent = "Join or create a group to see rankings.";
-    el.rankingSubtext.textContent = "Averages update when members submit rankings.";
+    el.overallList.textContent = "Join or create a group to see scores.";
+    el.rankingSubtext.textContent = "Averages update when members score each other.";
     return;
   }
 
@@ -486,7 +489,8 @@ async function renderOverallRanking() {
     .from("group_rankings")
     .select("*")
     .eq("group_id", state.group.id)
-    .order("average_position", { ascending: true });
+    .order("average_score", { ascending: false })
+    .order("nickname", { ascending: true });
 
   if (error) {
     showToast(error.message);
@@ -495,13 +499,13 @@ async function renderOverallRanking() {
 
   if (!data.length) {
     el.overallList.className = "rank-list empty-state";
-    el.overallList.textContent = "No rankings submitted yet.";
-    el.rankingSubtext.textContent = "Be the first to save a ranking.";
+    el.overallList.textContent = "No scores submitted yet.";
+    el.rankingSubtext.textContent = "Be the first to score the group.";
     return;
   }
 
   el.overallList.className = "rank-list";
-  el.rankingSubtext.textContent = `${data.length} ranked member${data.length === 1 ? "" : "s"}`;
+  el.rankingSubtext.textContent = `${data.length} scored member${data.length === 1 ? "" : "s"}`;
   el.overallList.innerHTML = data.map((person, index) => `
     <article class="leaderboard-card">
       <button class="leaderboard-toggle" type="button" data-ranking-user="${person.id}" aria-expanded="false">
@@ -509,7 +513,7 @@ async function renderOverallRanking() {
         ${avatarMarkup(person)}
         <span class="leaderboard-copy">
           <span class="person-name">${escapeHtml(person.nickname)}</span>
-          <span class="score">Average rank ${Number(person.average_position).toFixed(2)}</span>
+          <span class="score">Average score ${Number(person.average_score).toFixed(2)} from ${person.vote_count} voter${person.vote_count === 1 ? "" : "s"}</span>
         </span>
         <span class="leaderboard-chevron" aria-hidden="true">&#8964;</span>
       </button>
@@ -520,7 +524,7 @@ async function renderOverallRanking() {
 
 function topSixMarkup(items) {
   if (!items.length) {
-    return '<div class="ranking-preview-empty">No personal ranking submitted yet.</div>';
+    return '<div class="ranking-preview-empty">No personal scores submitted yet.</div>';
   }
 
   return `<div class="top-six-grid">${Array.from({ length: 6 }, (_, index) => {
@@ -529,7 +533,7 @@ function topSixMarkup(items) {
       return `<div class="top-six-slot empty" aria-label="Rank ${index + 1} is empty"><span>${index + 1}</span></div>`;
     }
     return `
-      <div class="top-six-slot" title="${escapeHtml(item.ranked.nickname)}">
+      <div class="top-six-slot" title="${escapeHtml(item.ranked.nickname)}: ${Number(item.score).toFixed(0)} points">
         <span class="top-six-number">${index + 1}</span>
         ${avatarMarkup(item.ranked, "top-six-avatar")}
       </div>
@@ -553,11 +557,11 @@ async function toggleRankingPreview(userId, button) {
     panel.innerHTML = '<div class="ranking-preview-empty">Loading...</div>';
     const { data, error } = await state.client
       .from("rankings")
-      .select("position, ranked:profiles!rankings_ranked_user_id_fkey(id, nickname, avatar_url)")
+      .select("score, ranked:profiles!rankings_ranked_user_id_fkey(id, nickname, avatar_url)")
       .eq("group_id", state.group.id)
       .eq("ranker_id", userId)
-      .lte("position", 6)
-      .order("position", { ascending: true });
+      .order("score", { ascending: false })
+      .limit(6);
 
     if (error) {
       panel.innerHTML = `<div class="ranking-preview-empty">${escapeHtml(error.message)}</div>`;
@@ -1205,13 +1209,10 @@ async function leaveGroup() {
   await loadAppData();
 }
 
-function moveRanking(userId, direction) {
-  const index = state.personalOrder.indexOf(userId);
-  const nextIndex = direction === "up" ? index - 1 : index + 1;
-  if (index < 0 || nextIndex < 0 || nextIndex >= state.personalOrder.length) return;
-  const nextOrder = [...state.personalOrder];
-  [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
-  state.personalOrder = nextOrder;
+function adjustRankingScore(userId, delta) {
+  if (!state.personalScores.has(userId) || userId === state.session.user.id) return;
+  const nextScore = Math.max(-99, Math.min(99, (state.personalScores.get(userId) || 0) + delta));
+  state.personalScores.set(userId, nextScore);
   renderPersonalRanking();
   scheduleRankingSave();
 }
@@ -1225,29 +1226,32 @@ async function saveRanking() {
 
   rankingSaveInFlight = true;
   el.rankingSaveStatus.textContent = "Saving...";
-  const rows = state.personalOrder
-    .filter((rankedUserId) => rankedUserId !== state.session.user.id)
-    .map((rankedUserId, index) => ({
-    group_id: state.group.id,
-    ranker_id: state.session.user.id,
-    ranked_user_id: rankedUserId,
+  const rows = [...state.personalScores.entries()]
+    .filter(([rankedUserId]) => rankedUserId !== state.session.user.id)
+    .map(([rankedUserId, score], index) => ({
+      group_id: state.group.id,
+      ranker_id: state.session.user.id,
+      ranked_user_id: rankedUserId,
+      score,
       position: index + 1
     }));
 
-  const { error } = await state.client
-    .from("rankings")
-    .upsert(rows, { onConflict: "group_id,ranker_id,ranked_user_id" });
+  try {
+    const { error } = await state.client
+      .from("rankings")
+      .upsert(rows, { onConflict: "group_id,ranker_id,ranked_user_id" });
 
-  if (error) {
+    if (error) throw error;
+    state.rankingPreviews.delete(state.session.user.id);
+    el.rankingSaveStatus.textContent = "Saved";
+    await renderOverallRanking();
+  } catch (error) {
     rankingSaveInFlight = false;
     el.rankingSaveStatus.textContent = "Could not save";
     showToast(error.message);
     return;
   }
 
-  state.rankingPreviews.delete(state.session.user.id);
-  el.rankingSaveStatus.textContent = "Saved";
-  await renderOverallRanking();
   rankingSaveInFlight = false;
   if (rankingSavePending) {
     rankingSavePending = false;
@@ -1383,27 +1387,9 @@ function wireEvents() {
   }));
 
   el.personalRankingList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-move]");
+    const button = event.target.closest("[data-score-delta]");
     if (!button) return;
-    moveRanking(button.dataset.userId, button.dataset.move);
-  });
-
-  let draggedId = null;
-  el.personalRankingList.addEventListener("dragstart", (event) => {
-    const card = event.target.closest("[data-user-id]");
-    draggedId = card?.dataset.userId || null;
-  });
-  el.personalRankingList.addEventListener("dragover", (event) => event.preventDefault());
-  el.personalRankingList.addEventListener("drop", (event) => {
-    event.preventDefault();
-    const target = event.target.closest("[data-user-id]");
-    if (!draggedId || !target || draggedId === target.dataset.userId) return;
-    const nextOrder = state.personalOrder.filter((id) => id !== draggedId);
-    const targetIndex = nextOrder.indexOf(target.dataset.userId);
-    nextOrder.splice(targetIndex, 0, draggedId);
-    state.personalOrder = nextOrder;
-    renderPersonalRanking();
-    scheduleRankingSave();
+    adjustRankingScore(button.dataset.userId, Number(button.dataset.scoreDelta));
   });
 }
 
@@ -1412,4 +1398,3 @@ bootstrap().catch((error) => {
   console.error(error);
   showToast(error.message || "Something went wrong");
 });
-
