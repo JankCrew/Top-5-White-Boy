@@ -61,6 +61,15 @@ select
   count(*)::integer as vote_count
 from public.rankings r
 join public.profiles p on p.id = r.ranked_user_id
+where
+  exists (
+    select 1 from public.group_members gm
+    where gm.group_id = r.group_id and gm.user_id = r.ranked_user_id
+  )
+  and exists (
+    select 1 from public.group_members gm
+    where gm.group_id = r.group_id and gm.user_id = r.ranker_id
+  )
 group by r.group_id, p.id, p.nickname, p.avatar_url;
 
 grant select, insert, update on public.profiles to authenticated;
@@ -154,7 +163,7 @@ using (ranker_id = auth.uid())
 with check (ranker_id = auth.uid());
 
 
--- Public profile pictures. Uploads remain restricted to each user's own folder.
+-- Public profile pictures. Uploads remain restricted to each user's own folders.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('avatars', 'avatars', true, 5242880, array['image/png', 'image/jpeg'])
 on conflict (id) do update
