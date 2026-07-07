@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260706-01" />
+    <link rel="stylesheet" href="styles.css?v=20260706-02" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -318,6 +318,44 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260706-01"></script>
+    <script src="app.js?v=20260706-02"></script>
+    <script>
+      renderPersonalRanking = function renderPersonalRankingSorted() {
+        if (!state.group || !state.members.length) {
+          el.personalRankingList.className = "rank-list empty-state";
+          el.personalRankingList.textContent = "Join a group before scoring people.";
+          return;
+        }
+
+        el.personalRankingList.className = "rank-list";
+        const voters = state.members
+          .filter((member) => member.id !== state.session.user.id)
+          .sort((first, second) => (first.nickname || "").localeCompare(second.nickname || "", undefined, { sensitivity: "base" }));
+
+        if (!voters.length) {
+          el.personalRankingList.className = "rank-list empty-state";
+          el.personalRankingList.textContent = "You need at least one other group member to score.";
+          return;
+        }
+
+        el.personalRankingList.innerHTML = voters.map((member) => {
+          const score = state.personalScores.get(member.id) || 0;
+          return `
+            <article class="rank-card score-card" data-user-id="${member.id}">
+              ${avatarMarkup(member)}
+              <div>
+                <div class="person-name">${escapeHtml(member.nickname)}</div>
+                <div class="score">${score === 1 ? "1 point" : `${score} points`}</div>
+              </div>
+              <div class="score-actions">
+                <button type="button" aria-label="Downvote ${escapeHtml(member.nickname)}" data-score-delta="-1" data-user-id="${member.id}">&#8595;</button>
+                <strong class="point-count" aria-label="Current points">${score}</strong>
+                <button type="button" aria-label="Upvote ${escapeHtml(member.nickname)}" data-score-delta="1" data-user-id="${member.id}">&#8593;</button>
+              </div>
+            </article>
+          `;
+        }).join("");
+      };
+    </script>
   </body>
 </html>
