@@ -7,7 +7,7 @@
     <script>
       document.documentElement.dataset.theme = localStorage.getItem("rank-circle-theme") || "light";
     </script>
-    <link rel="stylesheet" href="styles.css?v=20260703-28" />
+    <link rel="stylesheet" href="styles.css?v=20260706-01" />
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -22,9 +22,9 @@
       </section>
 
       <section id="authPanel" class="panel auth-panel hidden">
-        <p class="eyebrow">Private friend rankings</p>
-        <h1>Rank your group, then see the average.</h1>
-        <p class="muted">Sign in with email, set a profile, join a group, and submit your personal ranking.</p>
+        <p class="eyebrow">Private friend scores</p>
+        <h1>Score your group, then see the average.</h1>
+        <p class="muted">Sign in with email, set a profile, join a group, and score each friend.</p>
         <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
           <button id="signInTab" class="tab active" type="button">Sign in</button>
           <button id="signUpTab" class="tab" type="button">Create account</button>
@@ -57,12 +57,12 @@
         <section id="rankingsView" class="view active">
           <div class="section-heading">
             <div>
-              <h2>Overall ranking</h2>
-              <p id="rankingSubtext" class="muted">Averages update when members submit rankings.</p>
+              <h2>Overall scores</h2>
+              <p id="rankingSubtext" class="muted">Averages update when members score each other.</p>
             </div>
             <button id="refreshButton" class="secondary-button" type="button">Refresh</button>
           </div>
-          <div id="overallList" class="rank-list empty-state">Join or create a group to see rankings.</div>
+          <div id="overallList" class="rank-list empty-state">Join or create a group to see scores.</div>
           <section id="homePlansSection" class="home-plans hidden">
             <div class="section-heading compact-heading">
               <div>
@@ -77,8 +77,8 @@
         <section id="myRankingView" class="view">
           <div class="section-heading">
             <div>
-              <h2>My ranking</h2>
-              <p class="muted">Use the arrows or drag people into your preferred order. Changes save automatically.</p>
+              <h2>My scores</h2>
+              <p class="muted">Upvote or downvote each friend. Changes save automatically.</p>
             </div>
             <span id="rankingSaveStatus" class="save-status" role="status">Saved</span>
           </div>
@@ -290,7 +290,7 @@
             <div id="leaveGroupSection" class="settings-section">
               <div>
                 <strong>Leave group</strong>
-                <p class="muted">Your saved rankings will remain if you rejoin later.</p>
+                <p class="muted">Your saved scores will remain if you rejoin later.</p>
               </div>
               <button id="leaveGroupButton" class="danger-button" type="button">Leave</button>
             </div>
@@ -318,7 +318,6 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260703-28"></script>
+    <script src="app.js?v=20260706-01"></script>
   </body>
 </html>
-
