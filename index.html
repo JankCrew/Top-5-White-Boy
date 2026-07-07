@@ -216,6 +216,11 @@
               <label>Quote
                 <textarea id="quoteInput" rows="4" maxlength="1000" placeholder="What was said?" required></textarea>
               </label>
+              <label>Who said it
+                <select id="quoteSpeakerSelect" required>
+                  <option value="">Select a name</option>
+                </select>
+              </label>
               <label>Date
                 <input id="quoteDateInput" type="date" required />
               </label>
@@ -318,7 +323,7 @@
       <div id="toast" class="toast hidden" role="status"></div>
     </main>
     <script src="config.js"></script>
-    <script src="app.js?v=20260706-02"></script>
+    <script src="app.js?v=20260706-03"></script>
     <script>
       renderPersonalRanking = function renderPersonalRankingSorted() {
         if (!state.group || !state.members.length) {
@@ -356,6 +361,59 @@
           `;
         }).join("");
       };
+
+      openQuoteComposer = function openQuoteComposerWithSpeaker() {
+        const quoteSpeakerSelect = document.querySelector("#quoteSpeakerSelect");
+        el.quoteForm.reset();
+        el.quoteDateInput.value = localDateValue();
+        const speakers = [...state.members]
+          .sort((first, second) => (first.nickname || "").localeCompare(second.nickname || "", undefined, { sensitivity: "base" }));
+        quoteSpeakerSelect.innerHTML = '<option value="">Select a name</option>' + speakers.map((member) => (
+          `<option value="${member.id}">${escapeHtml(member.nickname)}</option>`
+        )).join("");
+        el.quoteComposer.classList.remove("hidden");
+        el.quoteInput.focus();
+      };
+
+      saveQuote = async function saveQuoteWithSpeaker(event) {
+        event.preventDefault();
+        const quoteSpeakerSelect = document.querySelector("#quoteSpeakerSelect");
+        const quoteText = el.quoteInput.value.trim();
+        const speaker = state.members.find((member) => member.id === quoteSpeakerSelect.value);
+        const context = el.quoteContextInput.value.trim() || null;
+        if (!quoteText || !speaker || !state.group) return;
+        const speakerSuffix = ` - ${speaker.nickname}`;
+        const quote = `${quoteText.slice(0, 1000 - speakerSuffix.length)}${speakerSuffix}`;
+
+        el.saveQuoteButton.disabled = true;
+        el.saveQuoteButton.textContent = "Saving...";
+
+        const { error } = await state.client.from("quotes").insert({
+          group_id: state.group.id,
+          author_id: state.session.user.id,
+          quote,
+          quote_date: el.quoteDateInput.value,
+          context
+        });
+
+        el.saveQuoteButton.disabled = false;
+        el.saveQuoteButton.textContent = "Save quote";
+
+        if (error) {
+          showToast(error.message);
+          return;
+        }
+
+        closeQuoteComposer();
+        showToast("Quote added");
+        await loadQuotes();
+      };
+
+      el.addQuoteButton.addEventListener("click", openQuoteComposer);
+      el.quoteForm.addEventListener("submit", (event) => {
+        event.stopImmediatePropagation();
+        saveQuote(event);
+      }, true);
     </script>
   </body>
 </html>
