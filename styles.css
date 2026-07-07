@@ -327,17 +327,17 @@ input:focus, textarea:focus {
 
 .person-name { font-weight: 900; }
 .score { color: var(--muted); font-size: 0.82rem; font-weight: 800; }
-.drag-card { grid-template-columns: auto auto 1fr auto; }
+.score-card { grid-template-columns: auto minmax(0, 1fr) auto; }
 .drag-handle { color: var(--muted); font-weight: 900; }
 
-.reorder-actions { display: flex; gap: 6px; }
+.reorder-actions, .score-actions { display: flex; gap: 6px; }
 .save-status {
   flex: 0 0 auto;
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 800;
 }
-.reorder-actions button {
+.reorder-actions button, .score-actions button {
   width: 34px;
   height: 34px;
   min-height: 34px;
@@ -350,6 +350,21 @@ input:focus, textarea:focus {
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--card-bg);
+  font-weight: 900;
+}
+.score-actions {
+  align-items: center;
+  justify-content: end;
+}
+.point-count {
+  min-width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--primary-dark);
+  font-size: 0.9rem;
   font-weight: 900;
 }
 
@@ -792,4 +807,3 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .quote-form { border-radius: 8px; }
   .quote-composer { align-items: center; }
 }
-
